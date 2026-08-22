@@ -82,7 +82,9 @@ jobs:
           path: |
             release/*.exe
             release/*.blockmap
-            release/*.yml
+            release/latest.yml
+            release/latest-mac.yml
+            release/latest-linux.yml
             release/*.AppImage
             release/*.tar.gz
             release/*.dmg
@@ -164,10 +166,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            gh release upload "${GITHUB_REF_NAME}" release-assets/* --clobber
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" release-assets/* --clobber --repo "${GITHUB_REPOSITORY}"
           else
-            gh release create "${GITHUB_REF_NAME}" release-assets/* --generate-notes --title "Harbor ${GITHUB_REF_NAME#v}"
+            gh release create "${GITHUB_REF_NAME}" release-assets/* --generate-notes --title "Harbor ${GITHUB_REF_NAME#v}" --repo "${GITHUB_REPOSITORY}"
           fi
 
   pages:
