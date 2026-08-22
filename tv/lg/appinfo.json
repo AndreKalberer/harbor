@@ -1,0 +1,12 @@
+{
+  "id": "com.harbor.tv",
+  "version": "2.0.0",
+  "vendor": "Harbor",
+  "type": "web",
+  "main": "index.html",
+  "title": "Harbor",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "transparent": false,
+  "resolution": "1920x1080"
+}

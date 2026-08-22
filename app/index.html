@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https:; media-src 'self' blob: https:; frame-src data: https:; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <title>Harbor</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <button class="brand" type="button" data-section="Home" aria-label="Harbor home">
+          <img src="../assets/harbor-mark.svg" alt="" />
+          <strong>Harbor</strong>
+        </button>
+
+        <nav id="primary-nav" class="primary-nav" aria-label="Main navigation">
+          <button class="primary-nav-button active" type="button" data-section="Home">Home</button>
+          <button class="primary-nav-button" type="button" data-section="Watch">Watch</button>
+          <button class="primary-nav-button" type="button" data-section="Listen">Listen</button>
+          <button class="primary-nav-button" type="button" data-section="Read">Read</button>
+          <button class="primary-nav-button" type="button" data-section="Play">Play</button>
+        </nav>
+
+        <div class="header-tools">
+          <div class="header-search" role="search">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.75"></circle><path d="m16 16 4 4"></path></svg>
+            <label class="sr-only" for="resource-search">Search Harbor</label>
+            <input id="resource-search" type="search" autocomplete="off" placeholder="Search" />
+            <kbd aria-hidden="true">Ctrl K</kbd>
+          </div>
+          <button id="player-button" class="header-button" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7.5h6l1.7-2h8.3v13H4z"></path><path d="M8 12h8M8 15h5"></path></svg>
+            My Harbor
+          </button>
+          <button id="update-button" class="icon-button header-icon-button" type="button" aria-label="About and updates" title="About and updates">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 10v6M12 7.5v.5"></path></svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="hero" aria-labelledby="directory-title">
+          <div class="hero-copy">
+            <span id="hero-kicker" class="eyebrow">Harbor</span>
+            <h1 id="directory-title">Something great is always on.</h1>
+            <p id="results-label" aria-live="polite">Watch, listen, read, and play—your way.</p>
+            <div class="hero-actions">
+              <button id="hero-primary-button" class="button-primary hero-primary" type="button">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 7 8 5-8 5z"></path></svg>
+                Start watching
+              </button>
+              <button id="hero-library-button" class="button-secondary" type="button">＋ My List</button>
+              <button id="clear-button" class="button-secondary" type="button" hidden>Clear search</button>
+            </div>
+          </div>
+          <button id="hero-feature" class="hero-feature" type="button" aria-label="Open featured title">
+            <span class="hero-feature-label">Featured tonight</span>
+            <strong id="hero-feature-title">Dune: Part Two</strong>
+            <span id="hero-feature-meta">2024 · Sci-Fi</span>
+            <span class="hero-feature-play" aria-hidden="true">▶</span>
+          </button>
+        </section>
+
+        <div class="browse-shell">
+          <nav id="category-list" class="category-list" aria-label="Browse categories"></nav>
+
+          <section class="directory" aria-label="Browse Harbor">
+            <div id="resource-list" class="resource-list"></div>
+
+            <div id="empty-state" class="empty-state" hidden>
+              <span class="empty-icon" aria-hidden="true">⌕</span>
+              <h2>Nothing here yet</h2>
+              <p>Try a different search or explore another category.</p>
+              <button id="show-all-button" class="button-primary" type="button">Back to Home</button>
+            </div>
+          </section>
+
+          <footer class="page-footer">
+            <span id="catalog-count">Loading Harbor…</span>
+            <span id="app-version">Harbor 2.0.0</span>
+          </footer>
+        </div>
+      </main>
+    </div>
+
+    <dialog id="media-detail-dialog" class="media-detail-dialog" aria-labelledby="detail-title">
+      <div class="detail-dialog-header">
+        <div>
+          <span class="dialog-kicker">Now on Harbor</span>
+          <h2 id="detail-title">Title</h2>
+          <p id="detail-subtitle">Year · Rating · Genres</p>
+        </div>
+        <button id="close-detail-dialog-btn" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="detail-dialog-body">
+        <p id="detail-overview" class="detail-overview"></p>
+        <div id="detail-episodes-wrap" class="detail-episodes-wrap" hidden>
+          <div class="episodes-select-row">
+            <label for="detail-season-select">Season</label>
+            <select id="detail-season-select" class="detail-season-select"></select>
+          </div>
+          <div id="detail-episodes-list" class="detail-episodes-list"></div>
+        </div>
+        <div class="detail-actions-row">
+          <button id="detail-play-btn" class="button-primary btn-play-action">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 7 8 5-8 5z"></path></svg>
+            Play now
+          </button>
+          <button id="detail-save-btn" class="button-secondary" type="button">＋ My List</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="in-app-stream-dialog" class="in-app-stream-dialog" aria-labelledby="stream-dialog-title">
+      <div class="stream-dialog-header">
+        <div class="stream-dialog-title-wrap">
+          <span class="playing-indicator" aria-hidden="true"></span>
+          <div>
+            <span class="dialog-kicker">Now playing</span>
+            <h2 id="stream-dialog-title">Title</h2>
+          </div>
+          <span id="stream-episode-tag" class="stream-ep-tag">S1:E1</span>
+        </div>
+
+        <div class="stream-dialog-controls">
+          <select id="stream-server-select" hidden aria-hidden="true" tabindex="-1">
+            <option value="vidlink">Automatic 1</option>
+            <option value="vidsrc">Automatic 2</option>
+            <option value="autoembed">Automatic 3</option>
+            <option value="superembed">Automatic 4</option>
+          </select>
+          <button id="stream-prev-btn" class="btn-stream-action" title="Previous episode">← Previous</button>
+          <button id="stream-next-btn" class="btn-stream-action" title="Next episode">Next →</button>
+          <button id="close-stream-dialog-btn" class="icon-button" type="button" aria-label="Close">×</button>
+        </div>
+      </div>
+
+      <div class="stream-dialog-body">
+        <div id="stream-status-overlay" class="stream-status-overlay" role="status">
+          <span class="stream-loading-ring" aria-hidden="true"></span>
+          <strong id="stream-status-title">Starting playback…</strong>
+          <p id="stream-status-detail">Finding the best available route.</p>
+          <button id="stream-retry-button" class="button-secondary" type="button" hidden>Try again</button>
+        </div>
+        <video id="stream-direct-video" class="stream-direct-video" controls autoplay hidden></video>
+        <webview id="stream-in-app-webview" class="stream-in-app-webview" partition="persist:harbor"></webview>
+      </div>
+    </dialog>
+
+    <dialog id="my-harbor-dialog" class="my-harbor-dialog" aria-labelledby="my-harbor-title">
+      <div class="my-harbor-header">
+        <div>
+          <span class="dialog-kicker">Your space</span>
+          <h2 id="my-harbor-title">My Harbor</h2>
+          <p>Pick up where you left off and keep the things you love close.</p>
+        </div>
+        <button id="close-my-harbor-button" class="icon-button" type="button" aria-label="Close My Harbor">×</button>
+      </div>
+
+      <div class="my-harbor-stats" aria-label="My Harbor summary">
+        <div><strong id="my-list-count">0</strong><span>My List</span></div>
+        <div><strong id="continue-count">0</strong><span>In progress</span></div>
+        <div><strong id="history-count">0</strong><span>Recently opened</span></div>
+      </div>
+
+      <nav id="my-harbor-tabs" class="my-harbor-tabs" aria-label="My Harbor sections">
+        <button class="active" type="button" data-my-harbor-tab="list">My List</button>
+        <button type="button" data-my-harbor-tab="continue">Continue</button>
+        <button type="button" data-my-harbor-tab="history">History</button>
+        <button type="button" data-my-harbor-tab="library">Library</button>
+        <button type="button" data-my-harbor-tab="settings">Settings</button>
+      </nav>
+
+      <div id="my-harbor-content" class="my-harbor-content"></div>
+
+      <div class="my-harbor-footer">
+        <p>Your lists and preferences stay on this device.</p>
+        <button id="open-local-library-button" class="button-secondary" type="button">Open local files & games</button>
+      </div>
+    </dialog>
+
+    <dialog id="player-dialog" class="player-dialog" aria-labelledby="player-title">
+      <div class="player-heading">
+        <div>
+          <span class="dialog-kicker">On this computer</span>
+          <h2 id="player-title">My library</h2>
+          <p id="media-name">Open something you already own</p>
+        </div>
+        <button id="close-player-button" class="icon-button" type="button" aria-label="Close library">×</button>
+      </div>
+
+      <div id="reader-toolbar" class="reader-toolbar" hidden>
+        <div class="reader-navigation">
+          <button id="previous-page-button" type="button" aria-label="Previous page">←</button>
+          <span id="page-status">Page 1 of 1</span>
+          <button id="next-page-button" type="button" aria-label="Next page">→</button>
+        </div>
+        <div id="zoom-controls" class="zoom-controls" hidden>
+          <button id="zoom-out-button" type="button" aria-label="Zoom out">−</button>
+          <span id="zoom-status">100%</span>
+          <button id="zoom-in-button" type="button" aria-label="Zoom in">+</button>
+        </div>
+      </div>
+
+      <div id="player-stage" class="player-stage">
+        <div id="player-placeholder" class="player-placeholder">
+          <div class="media-mark" aria-hidden="true"><span></span></div>
+          <h3 id="placeholder-title">Bring your library into Harbor</h3>
+          <p id="placeholder-text">Play videos and music, read books and comics, or launch an installed game. Your files stay on this device.</p>
+          <div class="placeholder-actions">
+            <label class="button-primary choose-media-button" for="media-file-input">Open a file</label>
+            <button id="add-game-placeholder-button" class="button-secondary add-game-button" type="button">Add a game</button>
+          </div>
+        </div>
+
+        <video id="video-player" class="video-player" controls preload="metadata" hidden></video>
+        <div id="audio-player-shell" class="audio-player-shell" hidden>
+          <div class="audio-art" aria-hidden="true"><span>♪</span></div>
+          <audio id="audio-player" controls preload="metadata"></audio>
+        </div>
+        <div id="pdf-viewer-shell" class="document-viewer-shell" hidden><canvas id="pdf-canvas" aria-label="PDF page"></canvas></div>
+        <div id="epub-viewer-shell" class="document-viewer-shell epub-viewer-shell" hidden><article id="epub-document" class="epub-document"></article></div>
+        <div id="comic-viewer-shell" class="comic-viewer-shell" hidden><img id="comic-page" alt="Comic page" /></div>
+        <div id="game-viewer-shell" class="game-viewer-shell" hidden>
+          <div class="game-mark" aria-hidden="true"><span></span><span></span><i></i><i></i></div>
+          <h3 id="game-name">Installed game</h3>
+          <p>Launch the game already installed on this computer.</p>
+          <button id="play-game-button" class="button-primary play-game-button" type="button">Play</button>
+          <p id="game-status" class="game-status" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <div class="player-footer">
+        <p id="media-details">Video, audio, PDF, EPUB, CBZ, or an installed game</p>
+        <div>
+          <button id="clear-media-button" class="button-secondary" type="button" hidden>Clear</button>
+          <button id="add-game-button" class="button-secondary" type="button">Add game…</button>
+          <label class="button-primary" for="media-file-input">Open file…</label>
+        </div>
+      </div>
+
+      <input id="media-file-input" class="sr-only" type="file" accept="video/*,audio/*,application/pdf,.pdf,.epub,.cbz,.mp4,.m4v,.webm,.ogv,.mp3,.wav,.ogg,.oga,.aac,.m4a,.flac" />
+    </dialog>
+
+    <dialog id="update-dialog" class="update-dialog" aria-labelledby="update-title">
+      <form method="dialog">
+        <div class="dialog-heading">
+          <img src="../assets/harbor-mark.svg" alt="" />
+          <div>
+            <span class="dialog-kicker">About</span>
+            <h2 id="update-title">Harbor</h2>
+          </div>
+        </div>
+        <p>Get official Harbor releases, then let Harbor validate the installer before it opens.</p>
+        <p id="update-status" class="update-status" aria-live="polite">Checking version…</p>
+        <div class="dialog-actions">
+          <button class="button-secondary" value="cancel">Close</button>
+          <button id="release-page-button" class="button-secondary" type="button">Open downloads</button>
+          <button id="choose-update-button" class="button-primary" type="button">Install downloaded update</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="config.js"></script>
+    <script src="../node_modules/jszip/dist/jszip.min.js"></script>
+    <script src="renderer.js"></script>
+  </body>
+</html>
