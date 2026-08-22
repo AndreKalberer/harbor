@@ -27,7 +27,7 @@
     "dist:win:installer": "electron-builder --win nsis --x64 --publish never",
     "dist:win:release": "electron-builder --win nsis portable --x64 --publish never",
     "dist:linux": "electron-builder --linux AppImage tar.gz --x64 --publish never",
-    "dist:mac": "electron-builder --mac dmg zip --universal --publish never"
+    "dist:mac": "electron-builder --mac dmg zip --x64 --arm64 --publish never"
   },
   "devDependencies": {
     "electron": "43.4.1",

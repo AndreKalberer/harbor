@@ -8,7 +8,7 @@ Watch includes movies, television, anime, sports, and live TV. Listen includes m
 
 The public download site is prepared for `https://andrekalberer.github.io/harbor/`. Tagged builds publish to `https://github.com/AndreKalberer/harbor/releases/latest` with SHA-256 checksums.
 
-Windows users should normally choose `Harbor-Setup-<version>-Windows-x64.exe`. A portable Windows build, a universal macOS DMG/ZIP, Linux AppImage/tar.gz files, an LG webOS IPK, and an Android/Fire TV APK are produced by the release workflow. Versioned Samsung Tizen source is included because each sideloaded WGT must be signed with the certificate profile for the target TV.
+Windows users should normally choose `Harbor-Setup-<version>-Windows-x64.exe`. A portable Windows build, macOS DMG/ZIP files for Apple Silicon and Intel, Linux AppImage/tar.gz files, an LG webOS IPK, and an Android/Fire TV APK are produced by the release workflow. Versioned Samsung Tizen source is included because each sideloaded WGT must be signed with the certificate profile for the target TV.
 
 Releases are currently unsigned. Windows SmartScreen and macOS Gatekeeper may show a first-run warning. The workflow is ready to use these repository secrets when signing credentials are available:
 
