@@ -1,0 +1,10 @@
+node_modules/
+release/
+tv/build/
+tv/release/
+tv/android/.gradle/
+tv/android/app/build/
+tests/.tv-test-profile/
+tests/*.png
+*.log
+.DS_Store

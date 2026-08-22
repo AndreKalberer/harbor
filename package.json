@@ -1,0 +1,100 @@
+{
+  "name": "harbor-desktop",
+  "version": "2.0.0",
+  "description": "A consumer entertainment hub for watching, listening, reading, and playing.",
+  "desktopName": "com.harbor.desktop",
+  "main": "electron/main.cjs",
+  "author": "Harbor",
+  "license": "MIT",
+  "homepage": "https://andrekalberer.github.io/harbor/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AndreKalberer/harbor.git"
+  },
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "icon:render": "electron scripts/render-icon.cjs",
+    "test": "npm run test:static",
+    "test:static": "node --check app/config.js && node --check app/renderer.js && node --check electron/main.cjs && node --check electron/preload.cjs && node --check tv/config.js && node --check tv/tv.js && node --check scripts/configure-build.cjs && node --check scripts/stage-tv.cjs && node --check scripts/package-current-release.cjs && node tests/static-audit.cjs",
+    "configure:build": "node scripts/configure-build.cjs --desktop",
+    "tv:stage": "node scripts/stage-tv.cjs",
+    "tv:lg": "npm run tv:stage && npx --yes --package @webos-tools/cli@3.2.5 ares-package tv/build/lg -o tv/release",
+    "tv:android": "gradle -p tv/android :app:assembleRelease",
+    "release:local": "node scripts/package-current-release.cjs",
+    "dist": "electron-builder --publish never",
+    "dist:win": "electron-builder --win portable --x64 --publish never",
+    "dist:win:installer": "electron-builder --win nsis --x64 --publish never",
+    "dist:win:release": "electron-builder --win nsis portable --x64 --publish never",
+    "dist:linux": "electron-builder --linux AppImage tar.gz --x64 --publish never",
+    "dist:mac": "electron-builder --mac dmg zip --universal --publish never"
+  },
+  "devDependencies": {
+    "electron": "43.4.1",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.harbor.desktop",
+    "productName": "Harbor",
+    "asar": true,
+    "publish": {
+      "provider": "github",
+      "owner": "AndreKalberer",
+      "repo": "harbor",
+      "releaseType": "release"
+    },
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "app/**/*",
+      "assets/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Harbor-${version}-Windows-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Harbor",
+      "runAfterFinish": false,
+      "artifactName": "Harbor-Setup-${version}-Windows-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ],
+      "category": "Utility",
+      "syncDesktopName": true,
+      "artifactName": "Harbor-${version}-Linux-${arch}.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.entertainment",
+      "artifactName": "Harbor-${version}-macOS-${arch}.${ext}",
+      "hardenedRuntime": true
+    }
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "pdfjs-dist": "^6.2.108"
+  }
+}

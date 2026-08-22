@@ -1,0 +1,1253 @@
+{
+  "categories": [
+    "Watch",
+    "Read",
+    "Listen",
+    "Play"
+  ],
+  "items": [
+    {
+      "name": "123animes.ru",
+      "domain": "w1.123animes.ru",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://w1.123animes.ru/"
+    },
+    {
+      "name": "allmanga.to",
+      "domain": "allmanga.to",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://allmanga.to/"
+    },
+    {
+      "name": "anify.to",
+      "domain": "anify.to",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://anify.to/"
+    },
+    {
+      "name": "anime.nexus",
+      "domain": "anime.nexus",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://anime.nexus/"
+    },
+    {
+      "name": "animegg.org",
+      "domain": "animegg.org",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://www.animegg.org/"
+    },
+    {
+      "name": "animepahe.pw",
+      "domain": "animepahe.pw",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://animepahe.pw/"
+    },
+    {
+      "name": "animestream.net",
+      "domain": "anime.uniquestream.net",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://anime.uniquestream.net/"
+    },
+    {
+      "name": "animex.one",
+      "domain": "animex.one",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://animex.one/home"
+    },
+    {
+      "name": "anisuge.tv",
+      "domain": "anisuge.tv",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://anisuge.tv/home"
+    },
+    {
+      "name": "anitaku.io",
+      "domain": "anitaku.io",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://anitaku.io/"
+    },
+    {
+      "name": "aniworld.to",
+      "domain": "aniworld.to",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://aniworld.to/"
+    },
+    {
+      "name": "anizone.to",
+      "domain": "anizone.to",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://anizone.to/"
+    },
+    {
+      "name": "justanime.to",
+      "domain": "justanime.to",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://justanime.to/"
+    },
+    {
+      "name": "kickass-anime.ro",
+      "domain": "kickass-anime.ro",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://kickass-anime.ro/"
+    },
+    {
+      "name": "kissanime.com.ru",
+      "domain": "kissanime.com.ru",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://kissanime.com.ru/"
+    },
+    {
+      "name": "miruro.to",
+      "domain": "miruro.to",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://www.miruro.to/"
+    },
+    {
+      "name": "wcostream.tv",
+      "domain": "wcostream.tv",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://www.wcostream.tv/"
+    },
+    {
+      "name": "yenime.net",
+      "domain": "yenime.net",
+      "category": "Watch",
+      "sections": [
+        "Anime"
+      ],
+      "url": "https://yenime.net/"
+    },
+    {
+      "name": "asiaflix.net",
+      "domain": "asiaflix.net",
+      "category": "Watch",
+      "sections": [
+        "Asian Drama"
+      ],
+      "url": "https://asiaflix.net/home"
+    },
+    {
+      "name": "asianctv.cc",
+      "domain": "asianctv.cc",
+      "category": "Watch",
+      "sections": [
+        "Asian Drama"
+      ],
+      "url": "https://asianctv.cc/"
+    },
+    {
+      "name": "dramacool.com.tr",
+      "domain": "dramacool.com.tr",
+      "category": "Watch",
+      "sections": [
+        "Asian Drama"
+      ],
+      "url": "https://dramacool.com.tr/"
+    },
+    {
+      "name": "goplay.su",
+      "domain": "goplay.su",
+      "category": "Watch",
+      "sections": [
+        "Asian Drama"
+      ],
+      "url": "https://goplay.su/"
+    },
+    {
+      "name": "kissasian.com.lv",
+      "domain": "ww14.kissasian.com.lv",
+      "category": "Watch",
+      "sections": [
+        "Asian Drama"
+      ],
+      "url": "https://ww14.kissasian.com.lv/"
+    },
+    {
+      "name": "kisskh.club",
+      "domain": "kisskh.club",
+      "category": "Watch",
+      "sections": [
+        "Asian Drama"
+      ],
+      "url": "https://kisskh.club/"
+    },
+    {
+      "name": "kisskh.id",
+      "domain": "kisskh.id",
+      "category": "Watch",
+      "sections": [
+        "Asian Drama"
+      ],
+      "url": "https://kisskh.id/"
+    },
+    {
+      "name": "myasiantv.com.bz",
+      "domain": "myasiantv.com.bz",
+      "category": "Watch",
+      "sections": [
+        "Asian Drama"
+      ],
+      "url": "https://myasiantv.com.bz/"
+    },
+    {
+      "name": "bintv.cc",
+      "domain": "bintv.cc",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://www.bintv.cc/"
+    },
+    {
+      "name": "crackstreams.io",
+      "domain": "crackstreams.io",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://crackstreams.io/"
+    },
+    {
+      "name": "fctv33.hair",
+      "domain": "fctv33.hair",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://www.fctv33.hair/"
+    },
+    {
+      "name": "livetv.sx",
+      "domain": "livetv.sx",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://livetv.sx/enx/"
+    },
+    {
+      "name": "methstreams.ms",
+      "domain": "methstreams.ms",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://methstreams.ms/"
+    },
+    {
+      "name": "ntv.cx",
+      "domain": "ntv.cx",
+      "category": "Watch",
+      "sections": [
+        "Live Sports",
+        "Live TV"
+      ],
+      "url": "https://ntv.cx/"
+    },
+    {
+      "name": "onhockey.tv",
+      "domain": "onhockey.tv",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "http://onhockey.tv/"
+    },
+    {
+      "name": "roxiestreams.su",
+      "domain": "roxiestreams.su",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://roxiestreams.su/"
+    },
+    {
+      "name": "score808hd.tv",
+      "domain": "a1.score808hd.tv",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://a1.score808hd.tv/"
+    },
+    {
+      "name": "sportsurge.net",
+      "domain": "v2.sportsurge.net",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://v2.sportsurge.net/"
+    },
+    {
+      "name": "sportyhunter.xyz",
+      "domain": "sportyhunter.xyz",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://sportyhunter.xyz/"
+    },
+    {
+      "name": "streameast.ga",
+      "domain": "v2.streameast.ga",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://v2.streameast.ga/"
+    },
+    {
+      "name": "streameast.gk",
+      "domain": "hai8g.com",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://hai8g.com/4/11158480"
+    },
+    {
+      "name": "streamed.pk",
+      "domain": "streamed.pk",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://streamed.pk/"
+    },
+    {
+      "name": "streamfree.top",
+      "domain": "streamfree.top",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://streamfree.top/"
+    },
+    {
+      "name": "streamsports99.su",
+      "domain": "streamsports99.su",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://streamsports99.su/"
+    },
+    {
+      "name": "strikeout.im",
+      "domain": "strikeout.im",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://strikeout.im/"
+    },
+    {
+      "name": "timstreams.st",
+      "domain": "timstreams.st",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://timstreams.st/"
+    },
+    {
+      "name": "watchfooty.st",
+      "domain": "watchfooty.st",
+      "category": "Watch",
+      "sections": [
+        "Live Sports"
+      ],
+      "url": "https://www.watchfooty.st/en"
+    },
+    {
+      "name": "daddylive.st",
+      "domain": "dlhd.st",
+      "category": "Watch",
+      "sections": [
+        "Live TV"
+      ],
+      "url": "https://dlhd.st//24-7-channels.php"
+    },
+    {
+      "name": "famelack.com (Blocked for some countries)",
+      "domain": "famelack.com",
+      "category": "Watch",
+      "sections": [
+        "Live TV"
+      ],
+      "url": "https://famelack.com/"
+    },
+    {
+      "name": "globetv.app",
+      "domain": "globetv.app",
+      "category": "Watch",
+      "sections": [
+        "Live TV"
+      ],
+      "url": "https://globetv.app/"
+    },
+    {
+      "name": "iptv-web.app",
+      "domain": "iptv-web.app",
+      "category": "Watch",
+      "sections": [
+        "Live TV"
+      ],
+      "url": "https://iptv-web.app/"
+    },
+    {
+      "name": "publiciptv.com",
+      "domain": "publiciptv.com",
+      "category": "Watch",
+      "sections": [
+        "Live TV"
+      ],
+      "url": "https://publiciptv.com/"
+    },
+    {
+      "name": "streamsports99.su",
+      "domain": "streamsports99.su",
+      "category": "Watch",
+      "sections": [
+        "Live TV"
+      ],
+      "url": "https://streamsports99.su/live-tv"
+    },
+    {
+      "name": "tv247us.live",
+      "domain": "tv247us.live",
+      "category": "Watch",
+      "sections": [
+        "Live TV"
+      ],
+      "url": "https://tv247us.live/"
+    },
+    {
+      "name": "123moviesfree.net",
+      "domain": "ww7.123moviesfree.net",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://ww7.123moviesfree.net/home/"
+    },
+    {
+      "name": "67movies.net",
+      "domain": "67movies.net",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://67movies.net/"
+    },
+    {
+      "name": "aether.bar",
+      "domain": "aether.bar",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://aether.bar/"
+    },
+    {
+      "name": "anixtv.us.cc",
+      "domain": "anixtv.us.cc",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://anixtv.us.cc/"
+    },
+    {
+      "name": "cineby.at",
+      "domain": "cineby.at",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://www.cineby.at/"
+    },
+    {
+      "name": "cinebytv.com",
+      "domain": "cinebytv.com",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://cinebytv.com/"
+    },
+    {
+      "name": "cinemaos.live",
+      "domain": "cinemaos.live",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://cinemaos.live/"
+    },
+    {
+      "name": "doraby.com",
+      "domain": "doraby.com",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://doraby.com"
+    },
+    {
+      "name": "flickr-mini.pages.dev",
+      "domain": "flickr-mini.pages.dev",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://flickr-mini.pages.dev/"
+    },
+    {
+      "name": "flickystream.dad",
+      "domain": "flickystream.dad",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://flickystream.dad/"
+    },
+    {
+      "name": "flixer.su",
+      "domain": "flixer.su",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://flixer.su/"
+    },
+    {
+      "name": "fluxtv.cc",
+      "domain": "fluxtv.cc",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://fluxtv.cc/"
+    },
+    {
+      "name": "fmoviess.org",
+      "domain": "fmoviess.org",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://fmoviess.org/"
+    },
+    {
+      "name": "goojara.to",
+      "domain": "ww1.goojara.to",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://ww1.goojara.to/"
+    },
+    {
+      "name": "hdtoday.tr",
+      "domain": "hdtoday.tr",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://hdtoday.tr/"
+    },
+    {
+      "name": "hydrahd.ru",
+      "domain": "hydrahd.ru",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://hydrahd.ru/"
+    },
+    {
+      "name": "lookmovie2.to",
+      "domain": "lookmovie2.to",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://www.lookmovie2.to/"
+    },
+    {
+      "name": "m4uhd.page",
+      "domain": "ww1.m4uhd.page",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://ww1.m4uhd.page/"
+    },
+    {
+      "name": "mapple.club",
+      "domain": "mapple.club",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://mapple.club/"
+    },
+    {
+      "name": "moviepire.ru",
+      "domain": "moviepire.ru",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://moviepire.ru/"
+    },
+    {
+      "name": "movish.to",
+      "domain": "movish.to",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://movish.to/"
+    },
+    {
+      "name": "nepu.io",
+      "domain": "nepu.io",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://nepu.io/"
+    },
+    {
+      "name": "onionplay.st",
+      "domain": "onionplay.st",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://onionplay.st/"
+    },
+    {
+      "name": "opstream.fun",
+      "domain": "opstream.fun",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://opstream.fun/"
+    },
+    {
+      "name": "popcornmovies.io",
+      "domain": "popcornmovies.io",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://popcornmovies.io/"
+    },
+    {
+      "name": "pressplayz.to",
+      "domain": "pressplayz.to",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://pressplayz.to/"
+    },
+    {
+      "name": "primewire.mov",
+      "domain": "primewire.mov",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://www.primewire.mov/home"
+    },
+    {
+      "name": "projectfreetv.sx",
+      "domain": "projectfreetv.sx",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://projectfreetv.sx/"
+    },
+    {
+      "name": "ramoflix.net",
+      "domain": "ramoflix.net",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://ramoflix.net/"
+    },
+    {
+      "name": "ridomovies.su",
+      "domain": "ridomovies.su",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://ridomovies.su/"
+    },
+    {
+      "name": "rivestream.app",
+      "domain": "rivestream.app",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://www.rivestream.app/"
+    },
+    {
+      "name": "shuttletv.su",
+      "domain": "shuttletv.su",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://shuttletv.su/"
+    },
+    {
+      "name": "soap2dayhd.net",
+      "domain": "soap2dayhd.net",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://soap2dayhd.net/home/"
+    },
+    {
+      "name": "soap2night.cc",
+      "domain": "hokejatv.com",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://hokejatv.com/redirect.php"
+    },
+    {
+      "name": "streamex.sh",
+      "domain": "streamex.sh",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://streamex.sh/"
+    },
+    {
+      "name": "streamvaults.ru",
+      "domain": "streamvaults.ru",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://streamvaults.ru/"
+    },
+    {
+      "name": "theflixertv.cyou",
+      "domain": "theflixertv.cyou",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://theflixertv.cyou/"
+    },
+    {
+      "name": "themoviebox.org",
+      "domain": "themoviebox.org",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://themoviebox.org/"
+    },
+    {
+      "name": "vidplay.top",
+      "domain": "vidplay.top",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://vidplay.top/"
+    },
+    {
+      "name": "willowmovies.com",
+      "domain": "willowmovies.com",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://willowmovies.com/"
+    },
+    {
+      "name": "wmovies.org",
+      "domain": "wmovies.org",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://wmovies.org/"
+    },
+    {
+      "name": "yesmovies.ag",
+      "domain": "ww.yesmovies.ag",
+      "category": "Watch",
+      "sections": [
+        "Movies & TV"
+      ],
+      "url": "https://ww.yesmovies.ag/"
+    },
+    {
+      "name": "batcave.biz",
+      "domain": "batcave.biz",
+      "category": "Read",
+      "sections": [
+        "Comics"
+      ],
+      "url": "https://batcave.biz/"
+    },
+    {
+      "name": "comicbookplus.com",
+      "domain": "comicbookplus.com",
+      "category": "Read",
+      "sections": [
+        "Comics"
+      ],
+      "url": "https://comicbookplus.com/"
+    },
+    {
+      "name": "getcomics.org",
+      "domain": "getcomics.org",
+      "category": "Read",
+      "sections": [
+        "Comics"
+      ],
+      "url": "https://getcomics.org/"
+    },
+    {
+      "name": "globalcomix.com",
+      "domain": "globalcomix.com",
+      "category": "Read",
+      "sections": [
+        "Comics"
+      ],
+      "url": "https://globalcomix.com/"
+    },
+    {
+      "name": "xoxocomic.com",
+      "domain": "xoxocomic.com",
+      "category": "Read",
+      "sections": [
+        "Comics"
+      ],
+      "url": "https://xoxocomic.com/"
+    },
+    {
+      "name": "allmanga.to",
+      "domain": "allmanga.to",
+      "category": "Read",
+      "sections": [
+        "Manga"
+      ],
+      "url": "https://allmanga.to/manga"
+    },
+    {
+      "name": "comix.to",
+      "domain": "comix.to",
+      "category": "Read",
+      "sections": [
+        "Manga"
+      ],
+      "url": "https://comix.to/"
+    },
+    {
+      "name": "kagane.org",
+      "domain": "kagane.org",
+      "category": "Read",
+      "sections": [
+        "Manga"
+      ],
+      "url": "https://kagane.org/"
+    },
+    {
+      "name": "mangadex.org",
+      "domain": "mangadex.org",
+      "category": "Read",
+      "sections": [
+        "Manga"
+      ],
+      "url": "https://mangadex.org/"
+    },
+    {
+      "name": "mangafire.to",
+      "domain": "mangafire.to",
+      "category": "Read",
+      "sections": [
+        "Manga"
+      ],
+      "url": "https://mangafire.to/home"
+    },
+    {
+      "name": "mangago.me",
+      "domain": "mangago.me",
+      "category": "Read",
+      "sections": [
+        "Manga"
+      ],
+      "url": "https://mangago.me/"
+    },
+    {
+      "name": "mangahaven.net",
+      "domain": "mangahaven.net",
+      "category": "Read",
+      "sections": [
+        "Manga"
+      ],
+      "url": "https://mangahaven.net/"
+    },
+    {
+      "name": "manganato.gg",
+      "domain": "manganato.gg",
+      "category": "Read",
+      "sections": [
+        "Manga"
+      ],
+      "url": "https://www.manganato.gg/"
+    },
+    {
+      "name": "mangataro.org",
+      "domain": "mangataro.org",
+      "category": "Read",
+      "sections": [
+        "Manga"
+      ],
+      "url": "https://mangataro.org/"
+    },
+    {
+      "name": "weebcentral.com",
+      "domain": "weebcentral.com",
+      "category": "Read",
+      "sections": [
+        "Manga"
+      ],
+      "url": "https://weebcentral.com/"
+    },
+    {
+      "name": "annas-archive.gl",
+      "domain": "annas-archive.gl",
+      "category": "Read",
+      "sections": [
+        "eBooks & Audiobooks"
+      ],
+      "url": "https://annas-archive.gl/"
+    },
+    {
+      "name": "audiobookbay.lu",
+      "domain": "audiobookbay.lu",
+      "category": "Read",
+      "sections": [
+        "eBooks & Audiobooks"
+      ],
+      "url": "https://audiobookbay.lu/"
+    },
+    {
+      "name": "ebook-hunter.org",
+      "domain": "ebook-hunter.org",
+      "category": "Read",
+      "sections": [
+        "eBooks & Audiobooks"
+      ],
+      "url": "https://ebook-hunter.org/"
+    },
+    {
+      "name": "flowoss.com",
+      "domain": "flowoss.com",
+      "category": "Read",
+      "sections": [
+        "eBooks & Audiobooks"
+      ],
+      "url": "https://www.flowoss.com/"
+    },
+    {
+      "name": "foxit.com",
+      "domain": "foxit.com",
+      "category": "Read",
+      "sections": [
+        "eBooks & Audiobooks"
+      ],
+      "url": "https://www.foxit.com/pdf-reader/"
+    },
+    {
+      "name": "fulllengthaudiobooks.com",
+      "domain": "fulllengthaudiobooks.com",
+      "category": "Read",
+      "sections": [
+        "eBooks & Audiobooks"
+      ],
+      "url": "https://fulllengthaudiobooks.com/"
+    },
+    {
+      "name": "libgen.li",
+      "domain": "libgen.li",
+      "category": "Read",
+      "sections": [
+        "eBooks & Audiobooks"
+      ],
+      "url": "https://libgen.li/"
+    },
+    {
+      "name": "nepu.to",
+      "domain": "nepu.to",
+      "category": "Read",
+      "sections": [
+        "eBooks & Audiobooks"
+      ],
+      "url": "https://nepu.to/ebooks"
+    },
+    {
+      "name": "z-lib.gd",
+      "domain": "z-lib.gd",
+      "category": "Read",
+      "sections": [
+        "eBooks & Audiobooks"
+      ],
+      "url": "https://z-lib.gd/"
+    },
+    {
+      "name": "azmp3.cc",
+      "domain": "azmp3.cc",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://azmp3.cc/"
+    },
+    {
+      "name": "github.io/downline",
+      "domain": "stefnotch.github.io",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://stefnotch.github.io/downline/"
+    },
+    {
+      "name": "lucida.to",
+      "domain": "lucida.to",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://lucida.to/"
+    },
+    {
+      "name": "racoon",
+      "domain": "shailendramaurya.github.io",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://shailendramaurya.github.io/racoon/"
+    },
+    {
+      "name": "slsknet.org",
+      "domain": "slsknet.org",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://www.slsknet.org/"
+    },
+    {
+      "name": "spotdownloader.com",
+      "domain": "spotdownloader.com",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://spotdownloader.com/"
+    },
+    {
+      "name": "spotifymate.com",
+      "domain": "spotifymate.com",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://spotifymate.com/en"
+    },
+    {
+      "name": "spotmate.online",
+      "domain": "spotmate.online",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://spotmate.online/"
+    },
+    {
+      "name": "spotube.dev",
+      "domain": "spotube.krtirtho.dev",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://spotube.krtirtho.dev/"
+    },
+    {
+      "name": "y2mate.nu",
+      "domain": "v1.y2mate.nu",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://v1.y2mate.nu/"
+    },
+    {
+      "name": "ytiz.xyz",
+      "domain": "ytiz.xyz",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://ytiz.xyz/"
+    },
+    {
+      "name": "ytmp3.cc",
+      "domain": "ytmp3.cc",
+      "category": "Listen",
+      "sections": [
+        "Music"
+      ],
+      "url": "https://ytmp3.cc/"
+    },
+    {
+      "name": "ankergames.net",
+      "domain": "ankergames.net",
+      "category": "Play",
+      "sections": [
+        "Games"
+      ],
+      "url": "https://ankergames.net/"
+    },
+    {
+      "name": "dodi-repacks.site",
+      "domain": "dodi-repacks.site",
+      "category": "Play",
+      "sections": [
+        "Games"
+      ],
+      "url": "https://dodi-repacks.site/"
+    },
+    {
+      "name": "fitgirl-repacks.site",
+      "domain": "fitgirl-repacks.site",
+      "category": "Play",
+      "sections": [
+        "Games"
+      ],
+      "url": "https://fitgirl-repacks.site/"
+    },
+    {
+      "name": "g4u.to",
+      "domain": "g4u.to",
+      "category": "Play",
+      "sections": [
+        "Games"
+      ],
+      "url": "https://g4u.to/"
+    },
+    {
+      "name": "gload.to",
+      "domain": "gload.to",
+      "category": "Play",
+      "sections": [
+        "Games"
+      ],
+      "url": "https://gload.to/"
+    },
+    {
+      "name": "m4ckd0ge-repacks.site",
+      "domain": "m4ckd0ge-repacks.site",
+      "category": "Play",
+      "sections": [
+        "Games"
+      ],
+      "url": "https://m4ckd0ge-repacks.site/"
+    },
+    {
+      "name": "steamgg.net",
+      "domain": "steamgg.net",
+      "category": "Play",
+      "sections": [
+        "Games"
+      ],
+      "url": "https://steamgg.net/"
+    },
+    {
+      "name": "steamrip.com",
+      "domain": "steamrip.com",
+      "category": "Play",
+      "sections": [
+        "Games"
+      ],
+      "url": "https://steamrip.com/"
+    }
+  ]
+}

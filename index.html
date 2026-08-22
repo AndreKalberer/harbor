@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08040f" />
+    <meta name="description" content="Harbor brings movies, shows, music, books, games, and your own media into one calm desktop app." />
+    <meta property="og:title" content="Harbor — everything you like, one place" />
+    <meta property="og:description" content="A cinematic entertainment hub for Windows, macOS, and Linux." />
+    <meta property="og:image" content="https://andrekalberer.github.io/harbor/assets/icon.png" />
+    <title>Harbor — everything you like, one place</title>
+    <link rel="icon" href="assets/icon.png" />
+    <style>
+      :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #050208; color: #f8f5ff; }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; min-width: 300px; background: #050208; }
+      a { color: inherit; text-decoration: none; }
+      button, a { -webkit-tap-highlight-color: transparent; }
+      .shell { min-height: 100vh; overflow: hidden; }
+      .nav { position: absolute; inset: 0 0 auto; z-index: 3; display: flex; align-items: center; justify-content: space-between; width: min(1160px, calc(100% - 40px)); margin: auto; padding: 24px 0; }
+      .brand { display: flex; align-items: center; gap: 11px; font-size: 21px; font-weight: 800; letter-spacing: -0.04em; }
+      .brand img { width: 38px; height: 38px; }
+      .nav-link { color: #c7bfd2; font-size: 14px; font-weight: 650; }
+      .nav-link:hover { color: white; }
+      .hero { position: relative; display: grid; min-height: 820px; place-items: center; padding: 130px 24px 100px; text-align: center; isolation: isolate; }
+      .hero::before { position: absolute; inset: 0; z-index: -2; background: radial-gradient(circle at 18% 10%, rgba(76,31,213,.66), transparent 31rem), radial-gradient(circle at 82% 28%, rgba(171,50,205,.5), transparent 30rem), radial-gradient(circle at 52% 82%, rgba(37,72,169,.34), transparent 29rem), #08040f; content: ""; }
+      .hero::after { position: absolute; inset: 0; z-index: -1; background: linear-gradient(to bottom, transparent 60%, #050208), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.13'/%3E%3C/svg%3E"); opacity: .42; content: ""; }
+      .hero-content { width: min(850px, 100%); }
+      .eyebrow { margin: 0 0 20px; color: #d8c9ff; font-size: 12px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+      h1 { margin: 0; font-size: clamp(54px, 8vw, 104px); line-height: .94; letter-spacing: -.075em; }
+      .lede { max-width: 670px; margin: 27px auto 0; color: #d0c9d8; font-size: clamp(17px, 2vw, 21px); line-height: 1.55; }
+      .hero-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 34px; }
+      .button { display: inline-flex; min-height: 52px; align-items: center; justify-content: center; padding: 0 23px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; font-size: 14px; font-weight: 800; transition: transform .2s ease, background .2s ease; }
+      .button:hover { transform: translateY(-2px); }
+      .button-primary { background: white; color: #140a1b; }
+      .button-secondary { background: rgba(255,255,255,.08); backdrop-filter: blur(16px); }
+      .version-note { margin-top: 15px; color: #9e94a8; font-size: 12px; }
+      .preview { width: min(1120px, calc(100% - 38px)); margin: -125px auto 0; padding: 9px; border: 1px solid rgba(255,255,255,.13); border-radius: 24px; background: rgba(255,255,255,.05); box-shadow: 0 35px 120px rgba(0,0,0,.55); }
+      .preview-window { display: grid; min-height: 510px; align-content: end; overflow: hidden; padding: 54px; border-radius: 17px; background: linear-gradient(90deg, rgba(4,2,8,.96) 0%, rgba(4,2,8,.72) 42%, rgba(4,2,8,.04) 78%), radial-gradient(circle at 75% 30%, #5b35c7, transparent 30%), linear-gradient(140deg, #1a0c2e, #110717 60%, #08040f); }
+      .preview-copy { max-width: 500px; }
+      .preview-copy span { color: #bb9bff; font-size: 11px; font-weight: 900; letter-spacing: .15em; text-transform: uppercase; }
+      .preview-copy h2 { margin: 12px 0; font-size: clamp(38px, 5vw, 64px); line-height: .98; letter-spacing: -.06em; }
+      .preview-copy p { color: #c8c0d1; line-height: 1.6; }
+      .section { width: min(1120px, calc(100% - 40px)); margin: auto; padding: 118px 0; }
+      .section-heading { max-width: 700px; margin-bottom: 42px; }
+      .section-heading h2 { margin: 0; font-size: clamp(38px, 5vw, 64px); line-height: 1; letter-spacing: -.055em; }
+      .section-heading p { color: #aaa1b4; font-size: 17px; line-height: 1.65; }
+      .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+      .download-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+      .feature { min-height: 250px; padding: 27px; border: 1px solid rgba(255,255,255,.08); border-radius: 20px; background: linear-gradient(145deg, rgba(99,60,173,.19), rgba(255,255,255,.025)); }
+      .feature strong { display: block; margin-top: 73px; font-size: 23px; letter-spacing: -.04em; }
+      .feature p { color: #aaa1b4; line-height: 1.55; }
+      .downloads { padding-top: 65px; }
+      .download-card { padding: 25px; border: 1px solid rgba(255,255,255,.09); border-radius: 18px; background: #0d0813; }
+      .download-card.recommended { border-color: #9b73ff; box-shadow: 0 0 0 1px rgba(155,115,255,.25); }
+      .download-card small { color: #a896b8; }
+      .download-card h3 { margin: 8px 0 7px; font-size: 25px; }
+      .download-card p { min-height: 44px; color: #9f96aa; line-height: 1.5; }
+      .download-card .button { width: 100%; margin-top: 8px; }
+      .trust { margin: 22px 0 0; color: #8e849a; font-size: 12px; line-height: 1.6; }
+      footer { display: flex; justify-content: space-between; gap: 18px; width: min(1120px, calc(100% - 40px)); margin: auto; padding: 38px 0; border-top: 1px solid rgba(255,255,255,.08); color: #8f859a; font-size: 12px; }
+      @media (max-width: 780px) { .hero { min-height: 720px; } .preview { margin-top: -75px; } .preview-window { min-height: 430px; padding: 28px; } .feature-grid, .download-grid { grid-template-columns: 1fr; } .feature { min-height: 190px; } .feature strong { margin-top: 35px; } footer { flex-direction: column; } }
+      @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .button { transition: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <nav class="nav" aria-label="Main navigation"><a class="brand" href="#top"><img src="assets/harbor-mark.svg" alt="" />Harbor</a><a class="nav-link" href="#downloads">Downloads</a></nav>
+      <main>
+        <section id="top" class="hero"><div class="hero-content"><p class="eyebrow">Your entertainment, together</p><h1>Everything you like.<br />One calm place.</h1><p class="lede">Watch, listen, read, and play without bouncing between a dozen different windows. Harbor also keeps your own media library close.</p><div class="hero-actions"><a class="button button-primary" href="#downloads">Get Harbor</a><a class="button button-secondary" href="https://github.com/AndreKalberer/harbor/releases/latest">See the latest release</a></div><p class="version-note">Harbor 2.0 · Windows, macOS, and Linux</p></div></section>
+        <div class="preview" aria-label="Harbor app preview"><div class="preview-window"><div class="preview-copy"><span>Tonight on Harbor</span><h2>Something great is always on.</h2><p>Pick up where you left off, save something for later, or browse movies, series, anime, sports, music, books, and games.</p></div></div></div>
+        <section class="section"><div class="section-heading"><h2>Made for the couch. Useful everywhere.</h2><p>Harbor feels like a real entertainment service while keeping your list, progress, history, local files, and installed games on your device.</p></div><div class="feature-grid"><article class="feature"><strong>One search that makes sense</strong><p>Search everything from Home, or narrow it to the section and category you’re already browsing.</p></article><article class="feature"><strong>My Harbor remembers</strong><p>Save favorites, continue where you stopped, revisit history, and manage your local library.</p></article><article class="feature"><strong>Playback stays contained</strong><p>Harbor blocks player popups and downloads, then tries another route when a source stalls.</p></article></div></section>
+        <section id="downloads" class="section downloads"><div class="section-heading"><p class="eyebrow">Download Harbor</p><h2>Choose your screen.</h2><p>The release page includes the newest build for each platform. Windows users should choose the Setup file for normal installation.</p></div><div class="download-grid"><article class="download-card" data-platform="windows"><small>Windows 10 and 11</small><h3>Windows</h3><p>Installer and portable x64 builds.</p><a class="button button-primary" href="https://github.com/AndreKalberer/harbor/releases/latest">Download for Windows</a></article><article class="download-card" data-platform="mac"><small>Apple silicon and Intel</small><h3>macOS</h3><p>Universal DMG and ZIP builds.</p><a class="button button-primary" href="https://github.com/AndreKalberer/harbor/releases/latest">Download for macOS</a></article><article class="download-card" data-platform="linux"><small>64-bit Linux</small><h3>Linux</h3><p>AppImage and tar.gz builds.</p><a class="button button-primary" href="https://github.com/AndreKalberer/harbor/releases/latest">Download for Linux</a></article><article class="download-card" data-platform="tv"><small>Android, Fire, LG, Samsung</small><h3>TV</h3><p>Sideload packages and setup files.</p><a class="button button-primary" href="https://github.com/AndreKalberer/harbor/releases/latest">Download for TV</a></article></div><p class="trust">Harbor releases are currently unsigned. Your operating system may show a first-run warning. Only download builds from this page or Harbor’s official GitHub Releases.</p></section>
+      </main>
+      <footer><span>© 2026 Harbor</span><span>Your entertainment, in one place.</span></footer>
+    </div>
+    <script>navigator.userAgent.includes('Windows') ? document.querySelector('[data-platform="windows"]')?.classList.add('recommended') : navigator.userAgent.includes('Mac') ? document.querySelector('[data-platform="mac"]')?.classList.add('recommended') : navigator.userAgent.includes('Linux') && document.querySelector('[data-platform="linux"]')?.classList.add('recommended');</script>
+  </body>
+</html>

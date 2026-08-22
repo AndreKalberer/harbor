@@ -1,0 +1,3 @@
+interface:
+  display_name: "Package Electron Releases"
+  short_description: "Build cross-platform Electron downloads"
