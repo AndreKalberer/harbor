@@ -59,6 +59,7 @@ for (const platform of ['Windows', 'macOS', 'Linux', 'TV']) {
 }
 assert(landing.includes('https://github.com/AndreKalberer/harbor/releases/latest'), 'Landing page does not use the official release URL.');
 assert(!workflow.includes('HarborList-'), 'Legacy HarborList artifact names remain in CI.');
+assert(workflow.includes('HARBOR_CSC_LINK') && workflow.includes('[[ -n "$HARBOR_CSC_LINK" ]]'), 'Optional release signing is not guarded against missing credentials.');
 for (const artifact of ['Harbor-Windows', 'Harbor-Linux', 'Harbor-macOS', 'SHA256SUMS.txt']) {
   assert(workflow.includes(artifact), `Release workflow is missing ${artifact}.`);
 }
