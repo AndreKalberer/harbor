@@ -3,6 +3,7 @@ release/
 tv/build/
 tv/release/
 tv/android/.gradle/
+tv/android/build/
 tv/android/app/build/
 tests/.tv-test-profile/
 tests/*.png

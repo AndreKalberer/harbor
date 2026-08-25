@@ -13,7 +13,18 @@ permissions:
   contents: read
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate release tag and package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: test "${GITHUB_REF_NAME}" = "v$(node -p "require('./package.json').version")"
+
   build:
+    needs: verify
     strategy:
       fail-fast: false
       matrix:
@@ -44,27 +55,44 @@ jobs:
         run: npm ci
 
       - name: Configure private catalog access
+        shell: bash
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-        run: node scripts/configure-build.cjs --desktop --require
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            node scripts/configure-build.cjs --desktop
+          else
+            node scripts/configure-build.cjs --desktop --require
+          fi
 
       - name: Run static regression suite
         run: npm test
 
+      - name: Run isolated desktop consumer smoke suite
+        if: runner.os == 'Windows'
+        run: npm run test:desktop-smoke
+
+      - name: Run isolated TV remote-navigation smoke suite
+        if: runner.os == 'Windows'
+        run: npm run test:tv-smoke
+
       - name: Configure optional signing credentials
         shell: bash
         env:
-          HARBOR_CSC_LINK: ${{ secrets.CSC_LINK }}
-          HARBOR_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
           HARBOR_APPLE_ID: ${{ secrets.APPLE_ID }}
           HARBOR_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           HARBOR_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          if [[ -n "$HARBOR_CSC_LINK" ]]; then
-            printf 'CSC_LINK=%s\n' "$HARBOR_CSC_LINK" >> "$GITHUB_ENV"
-            if [[ -n "$HARBOR_CSC_KEY_PASSWORD" ]]; then
-              printf 'CSC_KEY_PASSWORD=%s\n' "$HARBOR_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
-            fi
+          if [[ "${RUNNER_OS}" == "Windows" && -n "${WIN_CSC_LINK}" ]]; then
+            printf 'CSC_LINK=%s\n' "${WIN_CSC_LINK}" >> "$GITHUB_ENV"
+            printf 'CSC_KEY_PASSWORD=%s\n' "${WIN_CSC_KEY_PASSWORD}" >> "$GITHUB_ENV"
+          elif [[ "${RUNNER_OS}" == "macOS" && -n "${MAC_CSC_LINK}" ]]; then
+            printf 'CSC_LINK=%s\n' "${MAC_CSC_LINK}" >> "$GITHUB_ENV"
+            printf 'CSC_KEY_PASSWORD=%s\n' "${MAC_CSC_KEY_PASSWORD}" >> "$GITHUB_ENV"
           fi
           if [[ -n "$HARBOR_APPLE_ID" && -n "$HARBOR_APPLE_APP_SPECIFIC_PASSWORD" && -n "$HARBOR_APPLE_TEAM_ID" ]]; then
             printf 'APPLE_ID=%s\n' "$HARBOR_APPLE_ID" >> "$GITHUB_ENV"
@@ -72,8 +100,33 @@ jobs:
             printf 'APPLE_TEAM_ID=%s\n' "$HARBOR_APPLE_TEAM_ID" >> "$GITHUB_ENV"
           fi
 
+      - name: Require signing for tagged desktop releases
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          HARBOR_APPLE_ID: ${{ secrets.APPLE_ID }}
+          HARBOR_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          HARBOR_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [[ "${RUNNER_OS}" == "Windows" && ( -z "${WIN_CSC_LINK}" || -z "${WIN_CSC_KEY_PASSWORD}" ) ]]; then
+            echo "Windows signing credentials are required for a tagged release." >&2
+            exit 1
+          fi
+          if [[ "${RUNNER_OS}" == "macOS" && ( -z "${MAC_CSC_LINK}" || -z "${MAC_CSC_KEY_PASSWORD}" || -z "${HARBOR_APPLE_ID}" || -z "${HARBOR_APPLE_APP_SPECIFIC_PASSWORD}" || -z "${HARBOR_APPLE_TEAM_ID}" ) ]]; then
+            echo "macOS signing and notarization credentials are required for a tagged release." >&2
+            exit 1
+          fi
+
       - name: Build native downloads
         run: ${{ matrix.command }}
+
+      - name: Smoke-test packaged Windows app
+        if: runner.os == 'Windows'
+        run: npm run test:packaged-smoke
 
       - name: Upload native downloads
         uses: actions/upload-artifact@v4
@@ -92,6 +145,7 @@ jobs:
           if-no-files-found: error
 
   tv:
+    needs: verify
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -120,19 +174,62 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Configure TV catalog access
+        shell: bash
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            node scripts/configure-build.cjs --tv
+          else
+            node scripts/configure-build.cjs --tv --require
+          fi
+
       - name: Stage TV clients
         run: npm run tv:stage
 
       - name: Package LG webOS client
         run: npx --yes --package @webos-tools/cli@3.2.5 ares-package tv/build/lg -o tv/release
 
+      - name: Configure Android release signing
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          HARBOR_ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          HARBOR_ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          HARBOR_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          HARBOR_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [[ -z "${HARBOR_ANDROID_KEYSTORE_BASE64}" || -z "${HARBOR_ANDROID_STORE_PASSWORD}" || -z "${HARBOR_ANDROID_KEY_ALIAS}" || -z "${HARBOR_ANDROID_KEY_PASSWORD}" ]]; then
+            echo "Android signing credentials are required for a tagged release." >&2
+            exit 1
+          fi
+          printf '%s' "${HARBOR_ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${RUNNER_TEMP}/harbor-release.jks"
+          printf 'HARBOR_ANDROID_KEYSTORE=%s\n' "${RUNNER_TEMP}/harbor-release.jks" >> "${GITHUB_ENV}"
+          printf 'HARBOR_ANDROID_STORE_PASSWORD=%s\n' "${HARBOR_ANDROID_STORE_PASSWORD}" >> "${GITHUB_ENV}"
+          printf 'HARBOR_ANDROID_KEY_ALIAS=%s\n' "${HARBOR_ANDROID_KEY_ALIAS}" >> "${GITHUB_ENV}"
+          printf 'HARBOR_ANDROID_KEY_PASSWORD=%s\n' "${HARBOR_ANDROID_KEY_PASSWORD}" >> "${GITHUB_ENV}"
+
       - name: Build Android and Fire TV APK
-        run: gradle -p tv/android :app:assembleRelease
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            gradle -p tv/android :app:assembleRelease
+          else
+            gradle -p tv/android :app:assembleDebug
+          fi
 
       - name: Name TV downloads
+        shell: bash
         run: |
-          mv tv/release/com.harbor.tv_2.0.0_all.ipk tv/release/Harbor-TV-LG-webOS-2.0.0.ipk
-          cp tv/android/app/build/outputs/apk/release/app-release.apk tv/release/Harbor-TV-Android-Fire-2.0.0.apk
+          HARBOR_VERSION="$(node -p "require('./package.json').version")"
+          mv "tv/release/com.harbor.tv_${HARBOR_VERSION}_all.ipk" "tv/release/Harbor-TV-LG-webOS-${HARBOR_VERSION}.ipk"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            APK_PATH="tv/android/app/build/outputs/apk/release/app-release.apk"
+          else
+            APK_PATH="tv/android/app/build/outputs/apk/debug/app-debug.apk"
+          fi
+          cp "${APK_PATH}" "tv/release/Harbor-TV-Android-Fire-${HARBOR_VERSION}.apk"
 
       - name: Upload TV downloads
         uses: actions/upload-artifact@v4
@@ -187,11 +284,33 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install runtime dependencies
+        run: npm ci
+
+      - name: Configure TV catalog access
+        shell: bash
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            node scripts/configure-build.cjs --tv
+          else
+            node scripts/configure-build.cjs --tv --require
+          fi
+
       - name: Stage download site
         run: |
-          mkdir -p _site/assets _site/tv
+          mkdir -p _site/assets _site/shared _site/tv _site/node_modules/hls.js/dist
           cp index.html _site/index.html
           cp assets/harbor-mark.svg assets/icon.png _site/assets/
+          cp shared/series-metadata.js shared/watch-browse.js _site/shared/
+          cp node_modules/hls.js/dist/hls.min.js _site/node_modules/hls.js/dist/
           cp tv/index.html tv/config.js tv/tv.css tv/tv.js _site/tv/
 
       - name: Configure Pages

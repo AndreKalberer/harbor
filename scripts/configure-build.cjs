@@ -16,7 +16,7 @@ if (requireKey && !apiKey) {
   throw new Error('TMDB_API_KEY is required for this release build.');
 }
 
-const configSource = `window.HARBOR_CONFIG = Object.freeze({\n  tmdbApiKey: ${JSON.stringify(apiKey)}\n});\n`;
+const configSource = `window.HARBOR_CONFIG = Object.freeze({\n  tmdbApiKey: '${apiKey}'\n});\n`;
 const targets = [];
 if (includeDesktop) targets.push(path.join(root, 'app', 'config.js'));
 if (includeTv) targets.push(path.join(root, 'tv', 'config.js'));

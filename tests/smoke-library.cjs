@@ -5,7 +5,9 @@ const port = process.argv[2] || '9333';
 
 const run = async () => {
   const targets = await fetch(`http://127.0.0.1:${port}/json`).then((response) => response.json());
-  const target = targets.find((item) => item.type === 'page' && item.title === 'Harbor');
+  const target = targets.find((item) => item.type === 'page'
+    && item.title === 'Harbor'
+    && /\/app\/index\.html(?:$|[?#])/i.test(item.url));
   if (!target) throw new Error('Harbor debug target was not found.');
 
   const socket = new WebSocket(target.webSocketDebuggerUrl);
@@ -46,13 +48,45 @@ const run = async () => {
   };
 
   await command('Runtime.enable');
+  await evaluate(`new Promise((resolve, reject) => {
+    const deadline = Date.now() + 15000;
+    const ready = () => typeof openLocalFile === 'function'
+      && typeof window.harbor?.listGames === 'function';
+    if (ready()) return resolve();
+    const timer = setInterval(() => {
+      if (ready()) {
+        clearInterval(timer);
+        resolve();
+      } else if (Date.now() >= deadline) {
+        clearInterval(timer);
+        reject(new Error('Harbor local-library controls did not become ready.'));
+      }
+    }, 25);
+  })`);
   const shell = await evaluate(`({
     title: document.title,
     version: document.querySelector('#app-version').textContent,
     catalog: document.querySelectorAll('#resource-list .media-card').length,
     jszip: typeof JSZip,
-    bridge: [typeof harbor.chooseGame, typeof harbor.launchGame, typeof harbor.listGames, typeof harbor.launchSavedGame, typeof harbor.removeGame]
+    bridge: [typeof harbor.chooseGame, typeof harbor.launchGame, typeof harbor.listGames, typeof harbor.launchSavedGame, typeof harbor.removeGame, typeof harbor.exportUserData, typeof harbor.importUserData]
   })`);
+  if (shell.bridge.some((entry) => entry !== 'function')) {
+    throw new Error('The isolated Harbor bridge is incomplete: ' + JSON.stringify(shell.bridge));
+  }
+
+  const onboarding = await evaluate(`(() => {
+    const before = {
+      open: welcomeDialog.open,
+      title: document.querySelector('#welcome-title')?.textContent,
+      steps: document.querySelectorAll('.welcome-grid article').length
+    };
+    if (welcomeDialog.open) welcomeStartButton.click();
+    const stored = JSON.parse(localStorage.getItem(USER_STATE_KEY) || '{}');
+    return { ...before, completed: stored.settings?.onboardingComplete === true, closed: !welcomeDialog.open };
+  })()`);
+  if (!onboarding.open || onboarding.steps !== 3 || !onboarding.completed || !onboarding.closed) {
+    throw new Error('First-run onboarding did not complete correctly: ' + JSON.stringify(onboarding));
+  }
 
   const epub = await evaluate(`(async () => {
     if (!playerDialog.open) playerDialog.showModal();
@@ -107,13 +141,17 @@ const run = async () => {
     libraryIsArray: Array.isArray(await harbor.listGames()),
     invalidLaunch: await harbor.launchSavedGame('not-a-library-id')
   }))()`);
-  const screenshot = await command('Page.captureScreenshot', { format: 'png', fromSurface: true });
-  fs.writeFileSync(path.join(__dirname, 'library-smoke.png'), Buffer.from(screenshot.data, 'base64'));
+  const artifactDirectory = process.env.HARBOR_QA_ARTIFACT_DIR;
+  if (artifactDirectory) {
+    fs.mkdirSync(artifactDirectory, { recursive: true });
+    const screenshot = await command('Page.captureScreenshot', { format: 'png', fromSurface: true });
+    fs.writeFileSync(path.join(artifactDirectory, 'library-smoke.png'), Buffer.from(screenshot.data, 'base64'));
+  }
   socket.close();
-  process.stdout.write(`${JSON.stringify({ shell, epub, comic, pdf, gameBoundary, savedGameBoundary }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ shell, onboarding, epub, comic, pdf, gameBoundary, savedGameBoundary }, null, 2)}\n`);
 };
 
 run().catch((error) => {
   console.error(error);
-  process.exitCode = 1;
+  process.exit(1);
 });

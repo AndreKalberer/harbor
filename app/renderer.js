@@ -1,6 +1,8 @@
 const categoryList = document.querySelector('#category-list');
+const watchFilterList = document.querySelector('#watch-filter-list');
 const resourceList = document.querySelector('#resource-list');
 const searchInput = document.querySelector('#resource-search');
+const compactSearchButton = document.querySelector('#compact-search-button');
 const primaryNav = document.querySelector('#primary-nav');
 const directoryTitle = document.querySelector('#directory-title');
 const heroKicker = document.querySelector('#hero-kicker');
@@ -16,11 +18,21 @@ const showAllButton = document.querySelector('#show-all-button');
 const emptyState = document.querySelector('#empty-state');
 const catalogCount = document.querySelector('#catalog-count');
 const appVersion = document.querySelector('#app-version');
+const welcomeDialog = document.querySelector('#welcome-dialog');
+const welcomeStartButton = document.querySelector('#welcome-start-button');
+const welcomeMyHarborButton = document.querySelector('#welcome-my-harbor-button');
+const artworkCacheApi = window.HarborArtworkCache;
 const updateButton = document.querySelector('#update-button');
 const updateDialog = document.querySelector('#update-dialog');
+const updateTitle = document.querySelector('#update-title');
 const chooseUpdateButton = document.querySelector('#choose-update-button');
 const releasePageButton = document.querySelector('#release-page-button');
 const updateStatus = document.querySelector('#update-status');
+const providerDisclosure = document.querySelector('#provider-disclosure');
+const diagnosticSummary = document.querySelector('#diagnostic-summary');
+const copyDiagnosticsButton = document.querySelector('#copy-diagnostics-button');
+const supportPageButton = document.querySelector('#support-page-button');
+const tmdbPageButton = document.querySelector('#tmdb-page-button');
 
 // Detail Dialog
 const mediaDetailDialog = document.querySelector('#media-detail-dialog');
@@ -30,8 +42,8 @@ const detailSubtitle = document.querySelector('#detail-subtitle');
 const detailOverview = document.querySelector('#detail-overview');
 const detailEpisodesWrap = document.querySelector('#detail-episodes-wrap');
 const detailSeasonSelect = document.querySelector('#detail-season-select');
+const detailSeasonRow = detailSeasonSelect.closest('.episodes-select-row');
 const detailEpisodesList = document.querySelector('#detail-episodes-list');
-const detailPlayBtn = document.querySelector('#detail-play-btn');
 const detailSaveBtn = document.querySelector('#detail-save-btn');
 
 // In-App Stream Player Dialog
@@ -374,838 +386,85 @@ playGameButton.addEventListener('click', async () => {
 // TMDB catalog access is injected only into packaged release builds.
 const TMDB_API_KEY = String(window.HARBOR_CONFIG?.tmdbApiKey || '').trim();
 const TMDB_BASE = 'https://api.themoviedb.org/3';
+const seriesMetadataApi = window.HarborSeriesMetadata;
+const watchBrowseApi = window.HarborWatchBrowse;
 
 // Massive Comprehensive Master Media Database (120+ Titles across Watch, Read, Listen, Play)
-const EXPANDED_MASTER_CATALOG = [
-  // ==================== WATCH (MOVIES, SHOWS, ANIME, LIVE TV) ====================
-  {
-    id: 'w-1',
-    tmdbId: '693134',
-    name: 'Dune: Part Two',
-    category: 'Watch',
-    type: 'movie',
-    year: 2024,
-    rating: '8.6',
-    sections: ['Movie', 'Sci-Fi'],
-    overview: 'Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-2',
-    tmdbId: '533535',
-    name: 'Deadpool & Wolverine',
-    category: 'Watch',
-    type: 'movie',
-    year: 2024,
-    rating: '8.5',
-    sections: ['Movie', 'Action'],
-    overview: 'A listless Wade Wilson teams up with a reluctant Wolverine to face an existential threat.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-3',
-    tmdbId: '872585',
-    name: 'Oppenheimer',
-    category: 'Watch',
-    type: 'movie',
-    year: 2023,
-    rating: '8.9',
-    sections: ['Movie', 'Biography'],
-    overview: 'The story of J. Robert Oppenheimer role in the development of the atomic bomb.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-4',
-    tmdbId: '569094',
-    name: 'Spider-Man: Across the Spider-Verse',
-    category: 'Watch',
-    type: 'movie',
-    year: 2023,
-    rating: '9.0',
-    sections: ['Movie', 'Animation'],
-    overview: 'Miles Morales catapults across the Multiverse to encounter a team of Spider-People.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-5',
-    tmdbId: '157336',
-    name: 'Interstellar',
-    category: 'Watch',
-    type: 'movie',
-    year: 2014,
-    rating: '8.7',
-    sections: ['Movie', 'Sci-Fi'],
-    overview: 'A team of explorers travel through a wormhole in space in an attempt to ensure humanity survival.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-6',
-    tmdbId: '155',
-    name: 'The Dark Knight',
-    category: 'Watch',
-    type: 'movie',
-    year: 2008,
-    rating: '9.0',
-    sections: ['Movie', 'Action'],
-    overview: 'Batman raises the stakes in his war on crime with the help of Lt. Jim Gordon and District Attorney Harvey Dent.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-7',
-    tmdbId: '27205',
-    name: 'Inception',
-    category: 'Watch',
-    type: 'movie',
-    year: 2010,
-    rating: '8.8',
-    sections: ['Movie', 'Sci-Fi'],
-    overview: 'A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-8',
-    tmdbId: '603',
-    name: 'The Matrix',
-    category: 'Watch',
-    type: 'movie',
-    year: 1999,
-    rating: '8.7',
-    sections: ['Movie', 'Action'],
-    overview: 'A computer hacker learns about the true nature of reality and his role in the war against its controllers.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-9',
-    tmdbId: '550',
-    name: 'Fight Club',
-    category: 'Watch',
-    type: 'movie',
-    year: 1999,
-    rating: '8.8',
-    sections: ['Movie', 'Drama'],
-    overview: 'An insomniac office worker and a devil-may-care soap maker form an underground fight club.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-10',
-    tmdbId: '680',
-    name: 'Pulp Fiction',
-    category: 'Watch',
-    type: 'movie',
-    year: 1994,
-    rating: '8.9',
-    sections: ['Movie', 'Crime'],
-    overview: 'The lives of two mob hitmen, a boxer, a gangster and his wife intertwine in four tales of violence and redemption.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-11',
-    tmdbId: '1396',
-    name: 'Breaking Bad',
-    category: 'Watch',
-    type: 'tv',
-    year: 2008,
-    rating: '9.5',
-    seasonsCount: 5,
-    episodesPerSeason: 13,
-    sections: ['TV Show', 'Crime'],
-    overview: 'A chemistry teacher diagnosed with lung cancer turns to manufacturing and selling methamphetamine.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-12',
-    tmdbId: '66732',
-    name: 'Stranger Things',
-    category: 'Watch',
-    type: 'tv',
-    year: 2016,
-    rating: '8.6',
-    seasonsCount: 4,
-    episodesPerSeason: 8,
-    sections: ['TV Show', 'Sci-Fi'],
-    overview: 'A small town uncovers a mystery involving secret experiments and terrifying supernatural forces.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-13',
-    tmdbId: '100088',
-    name: 'The Last of Us',
-    category: 'Watch',
-    type: 'tv',
-    year: 2023,
-    rating: '8.9',
-    seasonsCount: 1,
-    episodesPerSeason: 9,
-    sections: ['TV Show', 'Drama'],
-    overview: 'Joel and Ellie traverse a post-pandemic America facing ruthless killers and monsters.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-14',
-    tmdbId: '1399',
-    name: 'Game of Thrones',
-    category: 'Watch',
-    type: 'tv',
-    year: 2011,
-    rating: '8.4',
-    seasonsCount: 8,
-    episodesPerSeason: 10,
-    sections: ['TV Show', 'Fantasy'],
-    overview: 'Seven noble families fight for control of the mythical land of Westeros.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-15',
-    tmdbId: '94997',
-    name: 'House of the Dragon',
-    category: 'Watch',
-    type: 'tv',
-    year: 2022,
-    rating: '8.4',
-    seasonsCount: 2,
-    episodesPerSeason: 10,
-    sections: ['TV Show', 'Fantasy'],
-    overview: 'The Targaryen dynasty at the absolute apex of its power, with more than 15 dragons under their yoke.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-16',
-    tmdbId: '126308',
-    name: 'Shogun',
-    category: 'Watch',
-    type: 'tv',
-    year: 2024,
-    rating: '8.8',
-    seasonsCount: 1,
-    episodesPerSeason: 10,
-    sections: ['TV Show', 'History'],
-    overview: 'Lord Yoshii Toranaga discovers secrets that could tip the scales of power in feudal Japan.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-17',
-    tmdbId: '93405',
-    name: 'Squid Game',
-    category: 'Watch',
-    type: 'tv',
-    year: 2021,
-    rating: '8.0',
-    seasonsCount: 2,
-    episodesPerSeason: 9,
-    sections: ['TV Show', 'Thriller'],
-    overview: 'Hundreds of cash-strapped players accept a strange invitation to compete in children games.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-18',
-    tmdbId: '76479',
-    name: 'The Boys',
-    category: 'Watch',
-    type: 'tv',
-    year: 2019,
-    rating: '8.5',
-    seasonsCount: 4,
-    episodesPerSeason: 8,
-    sections: ['TV Show', 'Action'],
-    overview: 'A group of vigilantes set out to take down corrupt superheroes who abuse their superpowers.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-19',
-    tmdbId: '85937',
-    name: 'Demon Slayer: Kimetsu no Yaiba',
-    category: 'Watch',
-    type: 'anime',
-    year: 2019,
-    rating: '8.7',
-    seasonsCount: 4,
-    episodesPerSeason: 24,
-    sections: ['Anime', 'Action'],
-    overview: 'Tanjiro Kamado sets out to become a demon slayer to avenge his family and cure his sister.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-20',
-    tmdbId: '1429',
-    name: 'Attack on Titan',
-    category: 'Watch',
-    type: 'anime',
-    year: 2013,
-    rating: '9.1',
-    seasonsCount: 4,
-    episodesPerSeason: 25,
-    sections: ['Anime', 'Dark Fantasy'],
-    overview: 'Young Eren Jaeger vows to cleanse the earth of the giant humanoid Titans.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-21',
-    tmdbId: '94605',
-    name: 'Jujutsu Kaisen',
-    category: 'Watch',
-    type: 'anime',
-    year: 2020,
-    rating: '8.8',
-    seasonsCount: 2,
-    episodesPerSeason: 24,
-    sections: ['Anime', 'Supernatural'],
-    overview: 'Yuji Itadori enters Tokyo Prefectural Jujutsu High School after swallowing a cursed talisman.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-22',
-    tmdbId: '209867',
-    name: 'Solo Leveling',
-    category: 'Watch',
-    type: 'anime',
-    year: 2024,
-    rating: '8.9',
-    seasonsCount: 1,
-    episodesPerSeason: 12,
-    sections: ['Anime', 'Action'],
-    overview: 'Sung Jinwoo finds himself in a mysterious quest enabling him to level up.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-23',
-    tmdbId: '37854',
-    name: 'One Piece (Anime Series)',
-    category: 'Watch',
-    type: 'anime',
-    year: 1999,
-    rating: '8.9',
-    seasonsCount: 21,
-    episodesPerSeason: 50,
-    sections: ['Anime', 'Adventure'],
-    overview: 'Follows the adventures of Monkey D. Luffy and his pirate crew in order to find the greatest treasure.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-24',
-    tmdbId: '46260',
-    name: 'Naruto: Shippuden',
-    category: 'Watch',
-    type: 'anime',
-    year: 2007,
-    rating: '8.6',
-    seasonsCount: 21,
-    episodesPerSeason: 24,
-    sections: ['Anime', 'Ninja'],
-    overview: 'Naruto Uzumaki, is a loud, hyperactive, adolescent ninja who constantly searches for approval.',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
-  },
-  {
-    id: 'w-25',
-    tmdbId: 'live-sports',
-    name: 'World Sports HD Live Feed',
-    category: 'Watch',
-    type: 'live',
-    year: 2026,
-    rating: '9.2',
-    sections: ['Live TV', 'Sports'],
-    overview: 'Continuous live sports stream relay with low latency 60fps feed.',
-    directStream: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-    sources: [{ name: 'STREAM RELAY', badge: 'badge-relay' }]
-  },
-  {
-    id: 'w-26',
-    tmdbId: 'live-news',
-    name: 'Global 24/7 News Network',
-    category: 'Watch',
-    type: 'live',
-    year: 2026,
-    rating: '8.8',
-    sections: ['Live TV', 'News'],
-    overview: 'International breaking news and live broadcast stream relay.',
-    directStream: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    sources: [{ name: 'STREAM RELAY', badge: 'badge-relay' }]
-  },
-
-  // ==================== READ (MANGA, NOVELS, BOOKS, COMICS) ====================
-  {
-    id: 'r-1',
-    name: 'Berserk (Deluxe Edition Manga Vol. 1-14)',
-    category: 'Read',
-    type: 'manga',
-    year: 2023,
-    rating: '9.8',
-    sections: ['Manga', 'Dark Fantasy'],
-    overview: 'The legendary dark fantasy manga following Guts the Black Swordsman seeking revenge on Griffith.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'r-2',
-    name: 'One Piece Manga (Complete Volumes 1-108)',
-    category: 'Read',
-    type: 'manga',
-    year: 2024,
-    rating: '9.6',
-    sections: ['Manga', 'Adventure'],
-    overview: 'Monkey D. Luffy explores the Grand Line in search of the legendary One Piece treasure.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'r-3',
-    name: 'Chainsaw Man (Complete Manga Part 1 & 2)',
-    category: 'Read',
-    type: 'manga',
-    year: 2024,
-    rating: '9.3',
-    sections: ['Manga', 'Action'],
-    overview: 'Denji becomes Chainsaw Man by making a contract with the chainsaw devil Pochita.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'r-4',
-    name: 'Vagabond (Definitive Edition by Takehiko Inoue)',
-    category: 'Read',
-    type: 'manga',
-    year: 2023,
-    rating: '9.7',
-    sections: ['Manga', 'Samurai'],
-    overview: 'The fictionalized account of the life of legendary Japanese swordsman Miyamoto Musashi.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'r-5',
-    name: 'Vinland Saga (Complete Manga Box Sets)',
-    category: 'Read',
-    type: 'manga',
-    year: 2024,
-    rating: '9.5',
-    sections: ['Manga', 'Historical'],
-    overview: 'Thorfinn pursues a journey with his father killer in order to take revenge and end that life.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'r-6',
-    name: 'Dune Chronicles by Frank Herbert (Books 1-6 EPUB/PDF)',
-    category: 'Read',
-    type: 'book',
-    year: 2023,
-    rating: '9.4',
-    sections: ['Book', 'Sci-Fi'],
-    overview: 'The complete set of Frank Herbert sci-fi masterpiece exploring politics on Arrakis.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'r-7',
-    name: 'The Hobbit & The Lord of the Rings (Illustrated Collection)',
-    category: 'Read',
-    type: 'book',
-    year: 2023,
-    rating: '9.8',
-    sections: ['Book', 'High Fantasy'],
-    overview: 'J.R.R. Tolkien legendary epic journey through Middle-earth.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'r-8',
-    name: '1984 & Animal Farm by George Orwell (EPUB)',
-    category: 'Read',
-    type: 'book',
-    year: 2022,
-    rating: '9.5',
-    sections: ['Book', 'Classics'],
-    overview: 'Classic dystopian visions of totalitarian control and surveillance.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'r-9',
-    name: 'Solo Leveling (Light Novel & Manhwa Complete Edition)',
-    category: 'Read',
-    type: 'novel',
-    year: 2024,
-    rating: '9.2',
-    sections: ['Light Novel', 'Action'],
-    overview: 'The complete light novel series chronicling the rise of Shadow Monarch Sung Jinwoo.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'r-10',
-    name: 'Overlord Light Novel (Volumes 1-16 Complete)',
-    category: 'Read',
-    type: 'novel',
-    year: 2023,
-    rating: '9.1',
-    sections: ['Light Novel', 'Fantasy'],
-    overview: 'Momonga is transported into his favorite MMORPG world as the powerful skeletal sorcerer Ainz Ooal Gown.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'r-11',
-    name: 'Batman: The Long Halloween & Year One (CBZ Comic)',
-    category: 'Read',
-    type: 'comic',
-    year: 2022,
-    rating: '9.3',
-    sections: ['Comic', 'Mystery'],
-    overview: 'Classic graphic novel collections remastered in high resolution digital format.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'r-12',
-    name: 'Watchmen by Alan Moore (Ultimate Graphic Novel)',
-    category: 'Read',
-    type: 'comic',
-    year: 2022,
-    rating: '9.7',
-    sections: ['Comic', 'Superhero'],
-    overview: 'In an alternate 1985 America, costumed superheroes are part of daily society until a conspiracy strikes.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-
-  // ==================== LISTEN (MUSIC, SOUNDTRACKS, AUDIOBOOKS, RADIO) ====================
-  {
-    id: 'l-1',
-    name: 'Hans Zimmer: Live in Prague (Lossless FLAC 24-Bit)',
-    category: 'Listen',
-    type: 'music',
-    year: 2024,
-    rating: '9.7',
-    sections: ['Music', 'Soundtrack'],
-    overview: 'High-resolution recordings of Interstellar, Inception, Gladiator, and The Dark Knight.',
-    audioUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'FLAC MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'l-2',
-    name: 'Interstellar: Original Motion Picture Soundtrack (Expanded)',
-    category: 'Listen',
-    type: 'music',
-    year: 2023,
-    rating: '9.8',
-    sections: ['Music', 'Score'],
-    overview: 'The complete organ and orchestral masterpiece by Hans Zimmer.',
-    audioUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'FLAC MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'l-3',
-    name: 'Lo-Fi Chill & Beats 24/7 Live Stream Relay',
-    category: 'Listen',
-    type: 'radio',
-    year: 2026,
-    rating: '9.5',
-    sections: ['Music', 'Lo-Fi'],
-    overview: 'Continuous relax and study lo-fi hip hop stream relay with lossless audio quality.',
-    audioUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-    sources: [{ name: 'STREAM RELAY', badge: 'badge-relay' }]
-  },
-  {
-    id: 'l-4',
-    name: 'Anime & Gaming Symphony Soundtracks Collection',
-    category: 'Listen',
-    type: 'music',
-    year: 2024,
-    rating: '9.4',
-    sections: ['Music', 'Orchestral'],
-    overview: 'Orchestral arrangements of Studio Ghibli, Attack on Titan, Final Fantasy, and Elden Ring.',
-    audioUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'l-5',
-    name: 'Daft Punk: Complete Discography (Remastered FLAC)',
-    category: 'Listen',
-    type: 'music',
-    year: 2024,
-    rating: '9.9',
-    sections: ['Music', 'Electronic'],
-    overview: 'Discovery, Homework, Random Access Memories, and Alive 2007 in ultra fidelity.',
-    audioUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'FLAC MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'l-6',
-    name: 'Queen: Greatest Hits I, II & III (Studio Masters)',
-    category: 'Listen',
-    type: 'music',
-    year: 2023,
-    rating: '9.8',
-    sections: ['Music', 'Rock'],
-    overview: 'Bohemian Rhapsody, Don Stop Me Now, Under Pressure in high-resolution audio.',
-    audioUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'FLAC MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'l-7',
-    name: 'Atomic Habits Audiobook by James Clear',
-    category: 'Listen',
-    type: 'audiobook',
-    year: 2023,
-    rating: '9.3',
-    sections: ['Audiobook', 'Self-Dev'],
-    overview: 'Unabridged narrator edition with high-bitrate voice mastering.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'l-8',
-    name: 'Dune Audiobook Series by Frank Herbert (Full Cast)',
-    category: 'Listen',
-    type: 'audiobook',
-    year: 2024,
-    rating: '9.6',
-    sections: ['Audiobook', 'Sci-Fi'],
-    overview: 'Full cast dramatic narration of the sci-fi epic.',
-    sources: [{ name: 'FILE HOST', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'l-9',
-    name: '99% Invisible',
-    category: 'Listen',
-    type: 'podcast',
-    year: 2026,
-    rating: '9.4',
-    sections: ['Podcast', 'Design'],
-    overview: 'Stories about the unnoticed architecture and design that shape everyday life.'
-  },
-  {
-    id: 'l-10',
-    name: 'Science Vs',
-    category: 'Listen',
-    type: 'podcast',
-    year: 2026,
-    rating: '9.2',
-    sections: ['Podcast', 'Science'],
-    overview: 'A curious, evidence-led look at the ideas people argue about most.'
-  },
-
-  // ==================== PLAY ====================
-  {
-    id: 'p-1',
-    name: 'Elden Ring: Shadow of the Erdtree',
-    category: 'Play',
-    type: 'game',
-    year: 2024,
-    rating: '9.8',
-    sections: ['PC Game', 'Action RPG'],
-    overview: 'Guided by Empyrean Miquella, players explore the Land of Shadow.',
-    sources: [{ name: 'AUTO DOWNLOAD', badge: 'badge-file' }, { name: 'DIRECT MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'p-2',
-    name: 'Cyberpunk 2077: Phantom Liberty',
-    category: 'Play',
-    type: 'game',
-    year: 2024,
-    rating: '9.4',
-    sections: ['PC Game', 'Open World'],
-    overview: 'Return to Night City as V in a high-stakes spy thriller adventure.',
-    sources: [{ name: 'AUTO DOWNLOAD', badge: 'badge-file' }, { name: 'DIRECT MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'p-3',
-    name: 'Grand Theft Auto V',
-    category: 'Play',
-    type: 'game',
-    year: 2024,
-    rating: '9.5',
-    sections: ['PC Game', 'Action'],
-    overview: 'Experience the blockbuster in stunning 4K with ray tracing and ultra settings.',
-    sources: [{ name: 'AUTO DOWNLOAD', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'p-4',
-    name: 'Red Dead Redemption 2',
-    category: 'Play',
-    type: 'game',
-    year: 2024,
-    rating: '9.9',
-    sections: ['PC Game', 'Open World'],
-    overview: 'Arthur Morgan and the Van der Linde gang are outlaws on the run across the rugged heartland of America.',
-    sources: [{ name: 'AUTO DOWNLOAD', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'p-5',
-    name: 'Minecraft',
-    category: 'Play',
-    type: 'game',
-    year: 2024,
-    rating: '9.7',
-    sections: ['PC Game', 'Sandbox'],
-    overview: 'Explore infinite worlds and build everything from simple homes to grand castles.',
-    sources: [{ name: 'AUTO DOWNLOAD', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'p-6',
-    name: 'The Legend of Zelda: Tears of the Kingdom',
-    category: 'Play',
-    type: 'retro',
-    year: 2023,
-    rating: '9.9',
-    sections: ['Console Game', 'Adventure'],
-    overview: 'Explore the vast landscapes of Hyrule and the mysterious islands above it.',
-    sources: [{ name: 'AUTO DOWNLOAD', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'p-7',
-    name: 'Super Mario Odyssey',
-    category: 'Play',
-    type: 'retro',
-    year: 2024,
-    rating: '9.7',
-    sections: ['Console Game', 'Platformer'],
-    overview: 'Join Mario on massive, globe-trotting 3D adventures.',
-    sources: [{ name: 'AUTO DOWNLOAD', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'p-8',
-    name: 'Pokémon Emerald',
-    category: 'Play',
-    type: 'retro',
-    year: 2023,
-    rating: '9.8',
-    sections: ['Handheld Game', 'RPG'],
-    overview: 'A classic adventure through the Hoenn region with a team of Pokémon companions.',
-    sources: [{ name: 'AUTO DOWNLOAD', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'p-9',
-    name: 'Retro Classics',
-    category: 'Play',
-    type: 'retro',
-    year: 2024,
-    rating: '9.6',
-    sections: ['Arcade', 'Retro Games'],
-    overview: 'A place in your library for the classic games you already have installed.',
-    sources: [{ name: 'AUTO DOWNLOAD', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'p-10',
-    name: 'Dark Souls III',
-    category: 'Play',
-    type: 'game',
-    year: 2023,
-    rating: '9.6',
-    sections: ['PC Game', 'Action RPG'],
-    overview: 'As fires fade and the world falls into ruin, journey into a universe filled with more colossal enemies and environments.',
-    sources: [{ name: 'AUTO DOWNLOAD', badge: 'badge-file' }, { name: 'MIRROR', badge: 'badge-mirror' }]
-  },
-  {
-    id: 'p-11',
-    name: 'Civilization VI',
-    category: 'Play',
-    type: 'game',
-    year: 2016,
-    rating: '8.8',
-    sections: ['PC Game', 'Strategy'],
-    overview: 'Build an empire, guide a civilization, and compete across centuries of history.'
-  },
-  {
-    id: 'p-12',
-    name: 'Into the Breach',
-    category: 'Play',
-    type: 'game',
-    year: 2018,
-    rating: '9.1',
-    sections: ['PC Game', 'Strategy'],
-    overview: 'A tightly designed turn-based strategy game about protecting cities from an alien threat.'
-  }
-];
+const EXPANDED_MASTER_CATALOG = window.HarborCatalogData;
 
 // Upstream Stream Providers
-const STREAM_PROVIDERS = {
-  vidlink: {
-    name: 'VidLink Pro [Fastest 1080p]',
-    badge: 'badge-stream',
-    resolve: (tmdbId, isTv, season, episode) => {
-      if (isTv) return 'https://vidlink.pro/tv/' + tmdbId + '/' + season + '/' + episode;
-      return 'https://vidlink.pro/movie/' + tmdbId;
-    }
-  },
-  vidsrc: {
-    name: 'VidSrc Ultra HD 4K',
-    badge: 'badge-embed',
-    resolve: (tmdbId, isTv, season, episode) => {
-      if (isTv) return 'https://vidsrc.to/embed/tv/' + tmdbId + '/' + season + '/' + episode;
-      return 'https://vidsrc.to/embed/movie/' + tmdbId;
-    }
-  },
-  autoembed: {
-    name: 'AutoEmbed Direct 1080p',
-    badge: 'badge-stream',
-    resolve: (tmdbId, isTv, season, episode) => {
-      if (isTv) return 'https://autoembed.to/tv/tmdb/' + tmdbId + '/' + season + '/' + episode;
-      return 'https://autoembed.to/movie/tmdb/' + tmdbId;
-    }
-  },
-  superembed: {
-    name: 'SuperEmbed Multi-Source',
-    badge: 'badge-embed',
-    resolve: (tmdbId, isTv, season, episode) => {
-      if (isTv) return 'https://multiembed.mov/?video_id=' + tmdbId + '&tmdb=1&s=' + season + '&e=' + episode;
-      return 'https://multiembed.mov/?video_id=' + tmdbId + '&tmdb=1';
-    }
+const playbackProvidersApi = window.HarborPlaybackProviders;
+const STREAM_PROVIDERS = Object.fromEntries(playbackProvidersApi.providers.map((provider) => [
+  provider.id,
+  {
+    name: provider.name,
+    badge: provider.badge,
+    resolve: (tmdbId, isTv, season, episode) => (
+      playbackProvidersApi.resolve(provider.id, tmdbId, isTv, season, episode)
+    )
   }
-};
+]));
+providerDisclosure.textContent = playbackProvidersApi.providers.map((provider) => provider.name).join(', ') + '.';
 
+const WATCH_CATALOG = EXPANDED_MASTER_CATALOG.filter((item) => item.category === 'Watch');
+let directoryLinkCatalog = [];
 let activeCategory = 'Home';
 let activeSubcategory = 'All';
+let activeWatchFilter = '';
 const categories = ['Home', 'Watch', 'Listen', 'Read', 'Play'];
 let query = '';
-let discoveryMediaList = [...EXPANDED_MASTER_CATALOG];
+let discoveryMediaList = [...WATCH_CATALOG];
 let currentMediaList = [...discoveryMediaList];
 let activeMedia = null;
 let heroMedia = null;
 let activeSeason = 1;
 let activeEpisode = 1;
+let activeSeriesSeasons = [];
 let activeProviderKey = 'vidlink';
 let streamProviderAttempts = 0;
 let streamLoadTimeout = null;
+let streamStatusHideTimeout = null;
+let streamChromeHideTimeout = null;
 let searchTimeout = null;
 let searchController = null;
 let searchSequence = 0;
-let searchState = { term: '', loading: false, total: null, page: 1, canLoadMore: false };
+let searchState = { term: '', loading: false, total: null, page: 1, canLoadMore: false, partial: false };
+let watchBrowseItems = [];
+let watchBrowseKey = '';
+let watchBrowseGeneration = 0;
+let watchBrowseLoading = false;
+let watchBrowseLoaded = false;
+let watchBrowseCanLoadMore = false;
+let watchBrowsePage = 1;
+let streamHls = null;
 const catalogTotals = {
   Watch: { All: null, Movies: null, 'TV Shows': null, Anime: null, Sports: null, 'Live TV': 'Live' },
-  Listen: { All: null, Music: null, Soundtracks: null, Radio: null, Podcasts: 'Full', Audiobooks: null },
-  Read: { All: null, Books: null, Comics: null, Manga: null, 'Light Novels': null },
-  Play: { All: 'Library', 'PC Games': 'Library', Action: 'Library', RPG: 'Library', Adventure: 'Library', Strategy: 'Library' }
+  Listen: { All: 0, Music: 0 },
+  Read: { All: 0, Comics: 0, Manga: 0, 'eBooks & Audiobooks': 0 },
+  Play: { All: 0, Games: 0 }
 };
 const searchCache = new Map();
+const seriesMetadataCache = new Map();
 const SEARCH_DEBOUNCE_MS = 160;
 const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
 const SEARCH_REQUEST_TIMEOUT_MS = 4500;
 const CATALOG_REQUEST_TIMEOUT_MS = 12000;
 const CATALOG_TOTAL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const CATALOG_TOTAL_CACHE_KEY = 'harbor:catalog-totals:v2';
-const USER_STATE_KEY = 'harbor:user-state:v1';
+const CATALOG_TOTAL_CACHE_KEY = 'harbor:catalog-totals:v3';
+const userStateApi = window.HarborUserState;
+const USER_STATE_KEY = userStateApi.CURRENT_KEY;
 const USER_HISTORY_LIMIT = 80;
 
-const createDefaultUserState = () => ({
-  favorites: [],
-  history: [],
-  progress: {},
-  settings: {
-    autoplayNext: true,
-    rememberProgress: true,
-    reduceMotion: false
-  }
-});
+const createDefaultUserState = () => userStateApi.defaults();
 
-const loadUserState = () => {
-  const fallback = createDefaultUserState();
-  try {
-    const stored = JSON.parse(localStorage.getItem(USER_STATE_KEY) || 'null');
-    if (!stored || typeof stored !== 'object') return fallback;
-    return {
-      favorites: Array.isArray(stored.favorites) ? stored.favorites : [],
-      history: Array.isArray(stored.history) ? stored.history : [],
-      progress: stored.progress && typeof stored.progress === 'object' ? stored.progress : {},
-      settings: {
-        ...fallback.settings,
-        ...(stored.settings && typeof stored.settings === 'object' ? stored.settings : {})
-      }
-    };
-  } catch {
-    return fallback;
-  }
-};
+const loadUserState = () => userStateApi.load(localStorage);
 
 let userState = loadUserState();
 let activeMyHarborTab = 'list';
 let streamPlaybackStartedAt = 0;
+let streamPlaybackConfirmed = false;
+let streamReadinessPoll = null;
+let streamLoadGeneration = 0;
 let savedGameLibrary = [];
 
 const mediaKey = (item) => String(item?.id || [item?.category, item?.type, item?.name].join(':'));
@@ -1222,14 +481,12 @@ const mediaSnapshot = (item) => ({
   overview: item.overview || '',
   artworkUrl: item.artworkUrl || '',
   audioUrl: item.audioUrl || '',
-  directStream: item.directStream || '',
-  seasonsCount: item.seasonsCount,
-  episodesPerSeason: item.episodesPerSeason
+  directStream: item.directStream || ''
 });
 
 const persistUserState = () => {
   try {
-    localStorage.setItem(USER_STATE_KEY, JSON.stringify(userState));
+    userState = userStateApi.save(localStorage, userState);
   } catch {
     // Harbor remains usable if local persistence is unavailable.
   }
@@ -1306,24 +563,24 @@ const SECTION_CONFIG = {
   },
   Listen: {
     kicker: 'Listen',
-    title: 'Press play on your day.',
-    description: 'Music, soundtracks, radio, podcasts, and audiobooks for every mood.',
-    action: 'Play something',
-    subcategories: ['All', 'Music', 'Soundtracks', 'Radio', 'Podcasts', 'Audiobooks']
+    title: 'Choose where you want to listen.',
+    description: 'A clean directory of music sites collected from YarrList.',
+    action: 'Open featured site',
+    subcategories: ['All', 'Music']
   },
   Read: {
     kicker: 'Read',
-    title: 'Get lost in a good story.',
-    description: 'Books, comics, manga, and light novels worth making time for.',
-    action: 'Open a book',
-    subcategories: ['All', 'Books', 'Comics', 'Manga', 'Light Novels']
+    title: 'Choose where you want to read.',
+    description: 'Manga, comics, eBooks, and audiobook sites collected from YarrList.',
+    action: 'Open featured site',
+    subcategories: ['All', 'Comics', 'Manga', 'eBooks & Audiobooks']
   },
   Play: {
     kicker: 'Play',
-    title: 'Pick up the controller.',
-    description: 'Browse by mood, then launch games you already have from your personal library.',
-    action: 'Choose a game',
-    subcategories: ['All', 'PC Games', 'Action', 'RPG', 'Adventure', 'Strategy']
+    title: 'Choose where you want to browse.',
+    description: 'A straightforward directory of game sites collected from YarrList.',
+    action: 'Open featured site',
+    subcategories: ['All', 'Games']
   }
 };
 
@@ -1343,6 +600,7 @@ const itemMatchesSubcategory = (item, subcategory) => {
   const tags = (item.sections || []).map((value) => value.toLowerCase());
   const type = String(item.type || '').toLowerCase();
   const tagIncludes = (value) => tags.some((tag) => tag.includes(value));
+  if (tags.includes(subcategory.toLowerCase())) return true;
 
   const matchers = {
     Movies: () => type === 'movie',
@@ -1369,51 +627,19 @@ const itemMatchesSubcategory = (item, subcategory) => {
   return matchers[subcategory]?.() || false;
 };
 
+const currentWatchBrowseKey = () => [activeSubcategory, activeWatchFilter].join(':');
+
+const itemMatchesWatchFilter = (item, subcategory = activeSubcategory, filterId = activeWatchFilter) => (
+  !filterId || watchBrowseApi.matchesLocalFilter(item, subcategory, filterId)
+);
+
 const getSectionItems = (category, subcategory = 'All') => currentMediaList.filter((item) => (
   item.category === category && itemMatchesSubcategory(item, subcategory)
 ));
 
-const normalizeSearchText = (value = '') => String(value)
-  .normalize('NFKD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, ' ')
-  .trim();
-
-const searchScore = (item, term) => {
-  const needle = normalizeSearchText(term);
-  if (!needle) return 0;
-
-  const name = normalizeSearchText(item.name);
-  const sections = normalizeSearchText((item.sections || []).join(' '));
-  const metadata = normalizeSearchText([item.category, item.type, sections].join(' '));
-  const overview = normalizeSearchText(item.overview);
-  const tokens = needle.split(' ').filter(Boolean);
-  let score = 0;
-
-  if (name === needle) score += 1200;
-  else if (name.startsWith(needle)) {
-    score += 900;
-    score += Math.max(0, 120 - ((name.length - needle.length) * 3));
-  }
-  else if (name.includes(' ' + needle)) score += 760;
-  else if (name.includes(needle)) score += 620;
-
-  const nameTokenMatches = tokens.filter((token) => name.includes(token)).length;
-  if (nameTokenMatches === tokens.length) score += 360;
-  else score += nameTokenMatches * 90;
-
-  if (metadata === needle || sections === needle) score += 280;
-  else if (metadata.includes(needle)) score += 180;
-
-  const metadataTokenMatches = tokens.filter((token) => metadata.includes(token)).length;
-  score += metadataTokenMatches * 45;
-
-  if (overview.includes(needle)) score += 35;
-  if (score === 0) return 0;
-  score += Math.min(10, Number(item.rating) || 0);
-  return score;
-};
+const searchRankingApi = window.HarborSearchRanking;
+const normalizeSearchText = searchRankingApi.normalizeSearchText;
+const searchScore = searchRankingApi.searchScore;
 
 const searchResultKey = (item) => [
   normalizeSearchText(item.name),
@@ -1457,35 +683,45 @@ const rankSearchResults = (items, term) => {
 
 const getSearchScope = () => ({
   category: activeCategory,
-  subcategory: activeCategory === 'Home' ? 'All' : activeSubcategory
+  subcategory: activeCategory === 'Home' ? 'All' : activeSubcategory,
+  watchFilter: activeCategory === 'Watch' ? activeWatchFilter : ''
 });
 
-const getSearchScopeName = (scope = getSearchScope()) => (
-  scope.category === 'Home'
-    ? 'Harbor'
-    : (scope.subcategory === 'All' ? scope.category : scope.subcategory)
-);
+const artworkSource = (candidate) => artworkCacheApi.toCacheUrl(candidate) || candidate;
+
+const getSearchScopeName = (scope = getSearchScope()) => {
+  if (scope.category === 'Home') return 'Harbor';
+  if (scope.subcategory === 'All') return scope.category;
+  const filter = watchBrowseApi.getFilter(scope.subcategory, scope.watchFilter);
+  const isDefaultFilter = !filter || filter.id === watchBrowseApi.defaultFilterId(scope.subcategory);
+  return isDefaultFilter ? scope.subcategory : filter.label + ' ' + scope.subcategory;
+};
 
 const itemMatchesSearchScope = (item, scope = getSearchScope()) => {
   if (scope.category === 'Home') return true;
   if (item.category !== scope.category) return false;
-  return scope.subcategory === 'All' || itemMatchesSubcategory(item, scope.subcategory);
+  if (scope.subcategory === 'All') return true;
+  return itemMatchesSubcategory(item, scope.subcategory)
+    && itemMatchesWatchFilter(item, scope.subcategory, scope.watchFilter);
 };
 
 const getSearchCacheKey = (term, scope = getSearchScope()) => [
   normalizeSearchText(term),
   scope.category,
-  scope.subcategory
+  scope.subcategory,
+  scope.watchFilter || ''
 ].join('|');
 
 const isCurrentSearchRequest = (term, sequence, scope) => (
   sequence === searchSequence && getSearchCacheKey(query) === getSearchCacheKey(term, scope)
 );
 
-const localSearchResults = (term, scope = getSearchScope()) => rankSearchResults(
-  discoveryMediaList.filter((item) => itemMatchesSearchScope(item, scope)),
-  term
-);
+const localSearchResults = (term, scope = getSearchScope()) => {
+  const source = scope.category === 'Watch' && scope.subcategory !== 'All' && watchBrowseLoaded
+    ? [...watchBrowseItems, ...discoveryMediaList]
+    : discoveryMediaList;
+  return rankSearchResults(source.filter((item) => itemMatchesSearchScope(item, scope)), term);
+};
 
 const fetchSearchJson = async (url, signal, timeoutMs = SEARCH_REQUEST_TIMEOUT_MS) => {
   const timeoutController = new AbortController();
@@ -1503,6 +739,12 @@ const fetchSearchJson = async (url, signal, timeoutMs = SEARCH_REQUEST_TIMEOUT_M
   }
 };
 
+const TMDB_GENRE_LABELS = {
+  16: 'Animation', 18: 'Drama', 27: 'Horror', 28: 'Action', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 878: 'Sci-Fi', 10751: 'Family', 10759: 'Action & Adventure',
+  10762: 'Kids', 10764: 'Reality', 10765: 'Sci-Fi & Fantasy'
+};
+
 // Map TMDB item to Harbor Watch item
 const formatTmdbItem = (item) => {
   const isTv = item.media_type === 'tv' || (!item.title && item.name);
@@ -1516,6 +758,7 @@ const formatTmdbItem = (item) => {
   const sportsText = normalizeSearchText([title, item.overview].filter(Boolean).join(' '));
   const isSports = /\b(sport|football|soccer|basketball|baseball|hockey|tennis|boxing|wrestling|racing|formula 1|ufc)\b/.test(sportsText);
   const primarySection = isAnime ? 'Anime' : (isTv ? 'TV Show' : 'Movie');
+  const genres = (item.genre_ids || []).map((genreId) => TMDB_GENRE_LABELS[genreId]).filter(Boolean);
 
   return {
     id: 'tmdb-' + item.id,
@@ -1525,7 +768,7 @@ const formatTmdbItem = (item) => {
     type: isAnime ? 'anime' : (isTv ? 'tv' : 'movie'),
     year: year,
     rating: rating,
-    sections: [primarySection, isTv ? 'Series' : 'Feature', ...(isSports ? ['Sports'] : [])],
+    sections: [...new Set([primarySection, isTv ? 'Series' : 'Feature', ...genres, ...(isSports ? ['Sports'] : [])])],
     overview: item.overview || 'A popular title available to watch in Harbor.',
     artworkUrl: item.backdrop_path
       ? 'https://image.tmdb.org/t/p/w780' + item.backdrop_path
@@ -1535,6 +778,83 @@ const formatTmdbItem = (item) => {
       { key: 'vidsrc', name: 'EMBED PROVIDER', badge: 'badge-embed' }
     ]
   };
+};
+
+const liveItemId = (entry, index) => {
+  const source = String(entry.url || entry.name || index);
+  let hash = 0;
+  for (let cursor = 0; cursor < source.length; cursor++) hash = ((hash << 5) - hash + source.charCodeAt(cursor)) | 0;
+  return 'iptv-' + String(entry.id || entry.name || 'channel').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + Math.abs(hash);
+};
+
+const formatLiveChannel = (entry, index, section, filter) => ({
+  id: liveItemId(entry, index),
+  name: entry.name || 'Live channel',
+  category: 'Watch',
+  type: 'live',
+  year: 'Live',
+  rating: '',
+  sections: [...new Set([section, filter?.label || entry.group || 'Live TV'])],
+  overview: 'A publicly available live channel from the IPTV-org catalog. Availability can vary by region and broadcaster.',
+  artworkUrl: entry.logo || '',
+  directStream: entry.url,
+  sources: [{ name: 'PUBLIC LIVE STREAM', badge: 'badge-relay' }]
+});
+
+const localWatchBrowseItems = () => getSectionItems('Watch', activeSubcategory)
+  .filter((item) => itemMatchesWatchFilter(item));
+
+const loadActiveWatchBrowse = async ({ append = false } = {}) => {
+  if (activeCategory !== 'Watch' || activeSubcategory === 'All') return;
+  const filter = watchBrowseApi.getFilter(activeSubcategory, activeWatchFilter);
+  if (!filter) return;
+  const key = currentWatchBrowseKey();
+  const generation = ++watchBrowseGeneration;
+  const page = append ? watchBrowsePage + 1 : 1;
+  watchBrowseKey = key;
+  watchBrowseLoading = true;
+  watchBrowseLoaded = false;
+  if (!append) watchBrowseItems = [];
+  renderResources();
+
+  try {
+    let items = [];
+    let canLoadMore = false;
+    if (filter.source === 'iptv') {
+      const channels = await watchBrowseApi.loadLiveChannels(activeSubcategory, activeWatchFilter, 80);
+      items = channels.map((entry, index) => formatLiveChannel(entry, index, activeSubcategory, filter));
+    } else if (TMDB_API_KEY) {
+      const request = watchBrowseApi.buildTmdbRequest(activeSubcategory, activeWatchFilter, page);
+      const params = new URLSearchParams({ api_key: TMDB_API_KEY, ...request.params });
+      const data = await fetchSearchJson(TMDB_BASE + '/' + request.endpoint + '?' + params.toString(), undefined, CATALOG_REQUEST_TIMEOUT_MS);
+      items = (data.results || []).map((item) => formatTmdbItem({ ...item, media_type: request.mediaType === 'movie' ? 'movie' : 'tv' }));
+      canLoadMore = Number(data.page || page) < Number(data.total_pages || 0);
+    } else {
+      items = localWatchBrowseItems();
+    }
+
+    if (generation !== watchBrowseGeneration || key !== currentWatchBrowseKey()) return;
+    watchBrowseItems = append
+      ? [...watchBrowseItems, ...items.filter((item) => !watchBrowseItems.some((existing) => mediaKey(existing) === mediaKey(item)))]
+      : items;
+    watchBrowsePage = page;
+    watchBrowseCanLoadMore = filter.source === 'tmdb' && canLoadMore;
+    watchBrowseLoading = false;
+    watchBrowseLoaded = true;
+    renderResources();
+  } catch (error) {
+    if (generation !== watchBrowseGeneration || key !== currentWatchBrowseKey()) return;
+    watchBrowseItems = localWatchBrowseItems();
+    watchBrowseCanLoadMore = false;
+    watchBrowseLoading = false;
+    watchBrowseLoaded = true;
+    renderResources();
+    showStatusToast('Live catalog is temporarily unavailable', 'Showing Harbor’s built-in picks instead.');
+  }
+};
+
+const loadMoreWatchBrowse = () => {
+  if (!watchBrowseLoading && watchBrowseCanLoadMore) void loadActiveWatchBrowse({ append: true });
 };
 
 // Map iTunes item to Harbor Listen item
@@ -1640,6 +960,42 @@ const formatOpenLibraryItem = (item) => {
   };
 };
 
+const formatDirectoryLink = (item, index) => ({
+  id: 'directory-' + item.category.toLowerCase() + '-' + index + '-' + item.domain,
+  name: item.name,
+  category: item.category,
+  type: 'external',
+  year: 'Website',
+  rating: '',
+  sections: item.sections?.length ? item.sections : [item.category],
+  overview: 'Open ' + item.domain + ' in your browser. This link is listed in the YarrList ' + item.category.toLowerCase() + ' directory.',
+  artworkUrl: '',
+  domain: item.domain,
+  externalUrl: item.url,
+  directorySource: 'YarrList'
+});
+
+const applyDirectoryLinkTotals = () => {
+  for (const category of ['Listen', 'Read', 'Play']) {
+    const items = directoryLinkCatalog.filter((item) => item.category === category);
+    catalogTotals[category].All = items.length;
+    SECTION_CONFIG[category].subcategories.slice(1).forEach((subcategory) => {
+      catalogTotals[category][subcategory] = items.filter((item) => itemMatchesSubcategory(item, subcategory)).length;
+    });
+  }
+};
+
+const loadDirectoryLinks = async () => {
+  const links = await window.harbor?.getDirectoryLinks?.();
+  directoryLinkCatalog = Array.isArray(links) ? links.map(formatDirectoryLink) : [];
+  applyDirectoryLinkTotals();
+  discoveryMediaList = [...WATCH_CATALOG, ...directoryLinkCatalog];
+  if (!normalizeSearchText(query)) {
+    currentMediaList = [...discoveryMediaList];
+    renderResources();
+  }
+};
+
 // Fetch Live Trending
 const fetchTrendingMedia = async () => {
   try {
@@ -1647,9 +1003,9 @@ const fetchTrendingMedia = async () => {
     if (!res.ok) throw new Error('Failed');
     const data = await res.json();
     const tmdbItems = (data.results || []).map(formatTmdbItem);
-    discoveryMediaList = [...tmdbItems, ...EXPANDED_MASTER_CATALOG];
+    discoveryMediaList = [...tmdbItems, ...WATCH_CATALOG, ...directoryLinkCatalog];
   } catch {
-    discoveryMediaList = [...EXPANDED_MASTER_CATALOG];
+    discoveryMediaList = [...WATCH_CATALOG, ...directoryLinkCatalog];
   }
 
   if (!normalizeSearchText(query)) {
@@ -1677,26 +1033,6 @@ const applyCatalogTotalValues = (values) => {
     catalogTotals.Watch.All = catalogTotals.Watch.Movies + catalogTotals.Watch['TV Shows'];
   }
 
-  setNumber('Listen', 'Music', 'music');
-  setNumber('Listen', 'Soundtracks', 'soundtracks');
-  setNumber('Listen', 'Radio', 'radio');
-  setNumber('Listen', 'Audiobooks', 'audiobooks');
-  const listenKnownTotal = ['Music', 'Radio', 'Audiobooks']
-    .map((subcategory) => catalogTotals.Listen[subcategory])
-    .filter((value) => typeof value === 'number')
-    .reduce((sum, value) => sum + value, 0);
-  if (listenKnownTotal > 0) catalogTotals.Listen.All = formatCatalogTotal(listenKnownTotal) + '+';
-
-  setNumber('Read', 'Books', 'books');
-  setNumber('Read', 'Comics', 'comics');
-  setNumber('Read', 'Manga', 'manga');
-  setNumber('Read', 'Light Novels', 'lightNovels');
-  const readKnownTotal = ['Books', 'Comics', 'Manga', 'Light Novels']
-    .map((subcategory) => catalogTotals.Read[subcategory])
-    .filter((value) => typeof value === 'number')
-    .reduce((sum, value) => sum + value, 0);
-  if (readKnownTotal > 0) catalogTotals.Read.All = formatCatalogTotal(readKnownTotal) + '+';
-
   renderCategories();
 };
 
@@ -1705,6 +1041,7 @@ const loadCachedCatalogTotals = () => {
     const cached = JSON.parse(localStorage.getItem(CATALOG_TOTAL_CACHE_KEY) || 'null');
     if (!cached || Date.now() - cached.createdAt >= CATALOG_TOTAL_CACHE_TTL_MS) return;
     Object.entries(cached.totals || {}).forEach(([section, values]) => {
+      if (section !== 'Watch') return;
       if (!catalogTotals[section] || !values) return;
       Object.entries(values).forEach(([subcategory, value]) => {
         if (value !== null && catalogTotals[section][subcategory] !== undefined) {
@@ -1751,24 +1088,6 @@ const fetchSportsCatalogTotal = async () => {
   return [{ key: 'sports', total: (Number(movies.total_results) || 0) + (Number(shows.total_results) || 0) }];
 };
 
-const fetchMusicCatalogTotals = async () => {
-  const music = await fetchSearchJson(
-    'https://musicbrainz.org/ws/2/recording/?query=*%3A*&limit=1&fmt=json',
-    undefined,
-    CATALOG_REQUEST_TIMEOUT_MS
-  );
-  await new Promise((resolve) => setTimeout(resolve, 1100));
-  const soundtracks = await fetchSearchJson(
-    'https://musicbrainz.org/ws/2/recording/?query=tag%3Asoundtrack&limit=1&fmt=json',
-    undefined,
-    CATALOG_REQUEST_TIMEOUT_MS
-  );
-  return [
-    { key: 'music', total: Number(music.count) || 0 },
-    { key: 'soundtracks', total: Number(soundtracks.count) || 0 }
-  ];
-};
-
 const fetchCatalogTotals = async () => {
   const requests = [
     catalogTotalRequest('movies', TMDB_BASE + '/discover/movie?api_key=' + TMDB_API_KEY + '&include_adult=false&page=1', (data) => data.total_results),
@@ -1777,14 +1096,7 @@ const fetchCatalogTotals = async () => {
       fetchSearchJson(TMDB_BASE + '/discover/movie?api_key=' + TMDB_API_KEY + '&include_adult=false&with_genres=16&with_original_language=ja&page=1', undefined, CATALOG_REQUEST_TIMEOUT_MS),
       fetchSearchJson(TMDB_BASE + '/discover/tv?api_key=' + TMDB_API_KEY + '&include_adult=false&with_genres=16&with_original_language=ja&page=1', undefined, CATALOG_REQUEST_TIMEOUT_MS)
     ]).then(([movies, shows]) => [{ key: 'anime', total: (Number(movies.total_results) || 0) + (Number(shows.total_results) || 0) }]),
-    fetchSportsCatalogTotal(),
-    fetchMusicCatalogTotals(),
-    catalogTotalRequest('radio', 'https://de1.api.radio-browser.info/json/stats', (data) => data.stations),
-    catalogTotalRequest('books', 'https://gutendex.com/books', (data) => data.count),
-    catalogTotalRequest('comics', 'https://openlibrary.org/search.json?q=subject%3Acomics&limit=0&fields=key', (data) => data.numFound ?? data.num_found),
-    catalogTotalRequest('manga', 'https://openlibrary.org/search.json?q=subject%3Amanga&limit=0&fields=key', (data) => data.numFound ?? data.num_found),
-    catalogTotalRequest('lightNovels', 'https://openlibrary.org/search.json?q=%22light%20novel%22&limit=0&fields=key', (data) => data.numFound ?? data.num_found),
-    catalogTotalRequest('audiobooks', 'https://openlibrary.org/search.json?q=subject%3Aaudiobooks&limit=0&fields=key', (data) => data.numFound ?? data.num_found)
+    fetchSportsCatalogTotal()
   ];
 
   const settled = await Promise.allSettled(requests);
@@ -1798,7 +1110,7 @@ const fetchCatalogTotals = async () => {
 };
 
 // Global Multi-Category Search (Movies, TV Shows, Anime, Books, Music, Games)
-const applySearchBatch = (term, sequence, scope, localResults, batches, totals, hasMore, loading, page) => {
+const applySearchBatch = (term, sequence, scope, localResults, batches, totals, hasMore, failures, loading, page) => {
   if (!isCurrentSearchRequest(term, sequence, scope)) return;
 
   const combined = [localResults, ...batches.values()].flat();
@@ -1807,16 +1119,21 @@ const applySearchBatch = (term, sequence, scope, localResults, batches, totals, 
     term
   );
 
-  const localOnlyCount = localResults.filter((item) => (
-    item.category === 'Play' || ['live', 'radio', 'podcast', 'audiobook'].includes(item.type)
-  )).length;
-  const providerTotal = [...totals.values()].reduce((sum, value) => sum + value, 0);
+  const existingKeys = new Set(localResults.map(searchResultKey));
+  const hasRelevantNextPage = [...batches.entries()].some(([key, items]) => (
+    hasMore.get(key) && items.some((item) => (
+      itemMatchesSearchScope(item, scope)
+      && searchScore(item, term) > 0
+      && !existingKeys.has(searchResultKey(item))
+    ))
+  ));
   searchState = {
     term: normalizeSearchText(term),
     loading,
-    total: loading ? searchState.total : Math.max(currentMediaList.length, providerTotal + localOnlyCount, searchState.total || 0),
+    total: currentMediaList.length,
     page,
-    canLoadMore: [...hasMore.values()].some(Boolean)
+    canLoadMore: !loading && hasRelevantNextPage,
+    partial: failures.size > 0
   };
   renderResources();
 };
@@ -1830,7 +1147,7 @@ const searchGlobalMedia = async (term, sequence, scope, page = 1, append = false
   if (cached && Date.now() - cached.createdAt < SEARCH_CACHE_TTL_MS) {
     if (!isCurrentSearchRequest(term, sequence, scope)) return;
     currentMediaList = cached.items;
-    searchState = { term: normalizedTerm, loading: false, total: cached.total, page: cached.page || 1, canLoadMore: Boolean(cached.canLoadMore) };
+    searchState = { term: normalizedTerm, loading: false, total: cached.total, page: cached.page || 1, canLoadMore: Boolean(cached.canLoadMore), partial: Boolean(cached.partial) };
     renderResources();
     return;
   }
@@ -1841,6 +1158,7 @@ const searchGlobalMedia = async (term, sequence, scope, page = 1, append = false
   const batches = new Map();
   const totals = new Map();
   const hasMore = new Map();
+  const failures = new Set();
   const pageOffset = (page - 1) * 20;
 
   const availableProviders = [
@@ -1924,6 +1242,7 @@ const searchGlobalMedia = async (term, sequence, scope, page = 1, append = false
   ];
 
   const providers = availableProviders.filter((provider) => {
+    if (provider.category !== 'Watch') return false;
     if (scope.category === 'Home') return true;
     if (provider.category !== scope.category) return false;
     return scope.subcategory === 'All' || provider.subcategories.includes(scope.subcategory);
@@ -1941,9 +1260,10 @@ const searchGlobalMedia = async (term, sequence, scope, page = 1, append = false
       batches.set(provider.key, scopedItems);
       totals.set(provider.key, hasExactProviderTotal ? result.total : scopedItems.length);
       hasMore.set(provider.key, result.total > page * 20 || result.items.length >= 20);
-      applySearchBatch(term, sequence, scope, localResults, batches, totals, hasMore, true, page);
+      applySearchBatch(term, sequence, scope, localResults, batches, totals, hasMore, failures, true, page);
     } catch (error) {
       if (!signal.aborted && error?.name !== 'AbortError') {
+        failures.add(provider.key);
         console.warn(provider.key + ' search is temporarily unavailable.');
       }
     }
@@ -1952,13 +1272,14 @@ const searchGlobalMedia = async (term, sequence, scope, page = 1, append = false
   await Promise.allSettled(tasks);
   if (signal.aborted || !isCurrentSearchRequest(term, sequence, scope)) return;
 
-  applySearchBatch(term, sequence, scope, localResults, batches, totals, hasMore, false, page);
+  applySearchBatch(term, sequence, scope, localResults, batches, totals, hasMore, failures, false, page);
   searchCache.set(cacheKey, {
     createdAt: Date.now(),
     items: [...currentMediaList],
     total: searchState.total,
     page: searchState.page,
-    canLoadMore: searchState.canLoadMore
+    canLoadMore: searchState.canLoadMore,
+    partial: searchState.partial
   });
   while (searchCache.size > 30) searchCache.delete(searchCache.keys().next().value);
 };
@@ -1974,7 +1295,7 @@ const beginSearch = (term) => {
   const cacheKey = getSearchCacheKey(term, scope);
 
   if (!normalizedTerm) {
-    searchState = { term: '', loading: false, total: null, page: 1, canLoadMore: false };
+    searchState = { term: '', loading: false, total: null, page: 1, canLoadMore: false, partial: false };
     currentMediaList = [...discoveryMediaList];
     renderResources();
     return;
@@ -1983,7 +1304,7 @@ const beginSearch = (term) => {
   const cached = searchCache.get(cacheKey);
   if (cached && Date.now() - cached.createdAt < SEARCH_CACHE_TTL_MS) {
     currentMediaList = [...cached.items];
-    searchState = { term: normalizedTerm, loading: false, total: cached.total, page: cached.page || 1, canLoadMore: Boolean(cached.canLoadMore) };
+    searchState = { term: normalizedTerm, loading: false, total: cached.total, page: cached.page || 1, canLoadMore: Boolean(cached.canLoadMore), partial: Boolean(cached.partial) };
     renderResources();
     return;
   }
@@ -1994,7 +1315,8 @@ const beginSearch = (term) => {
     loading: normalizedTerm.length >= 2,
     total: normalizedTerm.length < 2 ? currentMediaList.length : null,
     page: 1,
-    canLoadMore: false
+    canLoadMore: false,
+    partial: false
   };
   renderResources();
   if (normalizedTerm.length < 2) return;
@@ -2016,13 +1338,17 @@ const loadMoreSearchResults = () => {
 const filteredMedia = () => {
   if (query.trim()) return currentMediaList.filter((item) => itemMatchesSearchScope(item));
   if (activeCategory === 'Home') return currentMediaList;
+  if (activeCategory === 'Watch' && activeSubcategory !== 'All') {
+    if (watchBrowseKey === currentWatchBrowseKey() && (watchBrowseLoaded || watchBrowseLoading)) return watchBrowseItems;
+    return localWatchBrowseItems();
+  }
   return getSectionItems(activeCategory, activeSubcategory);
 };
 
 const categoryCount = (subcategory) => {
   const catalogTotal = catalogTotals[activeCategory]?.[subcategory];
   if (catalogTotal !== undefined) {
-    if (catalogTotal === null) return '…';
+    if (catalogTotal === null) return '';
     if (typeof catalogTotal === 'string') return catalogTotal;
     return formatCatalogTotal(catalogTotal);
   }
@@ -2031,6 +1357,9 @@ const categoryCount = (subcategory) => {
 };
 
 const categoryAvailabilityLabel = (visibleCount) => {
+  if (activeCategory !== 'Watch' && activeCategory !== 'Home') {
+    return visibleCount + ' curated ' + (visibleCount === 1 ? 'link' : 'links') + ' from YarrList';
+  }
   const catalogTotal = catalogTotals[activeCategory]?.[activeSubcategory];
   const featuredLabel = visibleCount + ' featured ' + (visibleCount === 1 ? 'pick' : 'picks');
 
@@ -2043,6 +1372,47 @@ const categoryAvailabilityLabel = (visibleCount) => {
   }
   if (catalogTotal === 'Library') return 'Showing ' + featuredLabel + ' from your library';
   return 'Showing ' + featuredLabel;
+};
+
+const resetWatchBrowseState = () => {
+  watchBrowseGeneration++;
+  watchBrowseItems = [];
+  watchBrowseKey = '';
+  watchBrowseLoading = false;
+  watchBrowseLoaded = false;
+  watchBrowseCanLoadMore = false;
+  watchBrowsePage = 1;
+};
+
+const renderWatchFilters = () => {
+  watchFilterList.replaceChildren();
+  const filters = activeCategory === 'Watch' && activeSubcategory !== 'All'
+    ? watchBrowseApi.getFilters(activeSubcategory)
+    : [];
+  watchFilterList.hidden = filters.length === 0;
+  filters.forEach((filter) => {
+    const button = createElement('button', 'watch-filter-button', filter.label);
+    const active = activeWatchFilter === filter.id;
+    button.type = 'button';
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+    button.addEventListener('click', () => {
+      if (activeWatchFilter === filter.id && watchBrowseLoaded) return;
+      clearTimeout(searchTimeout);
+      searchController?.abort();
+      searchController = null;
+      searchSequence++;
+      query = '';
+      searchInput.value = '';
+      searchState = { term: '', loading: false, total: null, page: 1, canLoadMore: false, partial: false };
+      currentMediaList = [...discoveryMediaList];
+      activeWatchFilter = filter.id;
+      resetWatchBrowseState();
+      renderResources();
+      void loadActiveWatchBrowse();
+    });
+    watchFilterList.append(button);
+  });
 };
 
 const renderCategories = () => {
@@ -2061,20 +1431,28 @@ const renderCategories = () => {
     button.type = 'button';
     button.setAttribute('aria-pressed', String(activeSubcategory === category));
     if (activeSubcategory === category) button.classList.add('active');
-    button.append(
-      createElement('span', 'category-name', category),
-      createElement('span', 'category-count', String(categoryCount(category)))
-    );
+    const count = String(categoryCount(category));
+    const duplicatesCategory = category === 'Live TV' && count === 'Live';
+    const countLabel = createElement('span', 'category-count', duplicatesCategory ? '' : count);
+    countLabel.hidden = !count || duplicatesCategory;
+    button.setAttribute('aria-label', category + (count && !duplicatesCategory ? ', ' + count : ''));
+    button.append(createElement('span', 'category-name', category), countLabel);
     button.addEventListener('click', () => {
       activeSubcategory = category;
+      activeWatchFilter = activeCategory === 'Watch' && category !== 'All'
+        ? watchBrowseApi.defaultFilterId(category)
+        : '';
+      resetWatchBrowseState();
       if (normalizeSearchText(query)) beginSearch(query);
       else {
         renderCategories();
         renderResources();
+        if (activeCategory === 'Watch' && category !== 'All') void loadActiveWatchBrowse();
       }
     });
     categoryList.append(button);
   });
+  renderWatchFilters();
 };
 
 const setActiveSection = (category) => {
@@ -2085,24 +1463,62 @@ const setActiveSection = (category) => {
   searchSequence++;
   activeCategory = category;
   activeSubcategory = 'All';
+  activeWatchFilter = '';
+  resetWatchBrowseState();
   query = '';
-  searchState = { term: '', loading: false, total: null, page: 1, canLoadMore: false };
+  searchState = { term: '', loading: false, total: null, page: 1, canLoadMore: false, partial: false };
   searchInput.value = '';
   currentMediaList = [...discoveryMediaList];
   renderResources();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// Fetch TV Show details (seasons) from TMDB
-const fetchTvShowDetails = async (tmdbId) => {
+const fallbackSeriesSeasons = (item) => seriesMetadataApi.normalizeSeriesSeasons(
+  item?.seasons ? { seasons: item.seasons } : null,
+  0
+);
+
+// Fetch canonical season names and counts so Harbor never invents episode buttons.
+const fetchTvShowDetails = async (tmdbId, item = activeMedia) => {
+  const cacheKey = String(tmdbId || '');
+  if (seriesMetadataCache.has(cacheKey)) return seriesMetadataCache.get(cacheKey);
+  if (!TMDB_API_KEY || !cacheKey) return fallbackSeriesSeasons(item);
+
   try {
-    const res = await fetch(TMDB_BASE + '/tv/' + tmdbId + '?api_key=' + TMDB_API_KEY);
-    if (!res.ok) return 1;
-    const data = await res.json();
-    return data.number_of_seasons || 1;
+    const data = await fetchSearchJson(
+      TMDB_BASE + '/tv/' + encodeURIComponent(cacheKey) + '?api_key=' + TMDB_API_KEY,
+      undefined,
+      CATALOG_REQUEST_TIMEOUT_MS
+    );
+    const seasons = seriesMetadataApi.normalizeSeriesSeasons(data, 0);
+    if (seasons.length) seriesMetadataCache.set(cacheKey, seasons);
+    return seasons;
   } catch {
-    return 1;
+    return fallbackSeriesSeasons(item);
   }
+};
+
+const activeSeasonMetadata = () => seriesMetadataApi.findSeason(activeSeriesSeasons, activeSeason);
+
+const updateStreamEpisodeControls = () => {
+  const isSeries = activeMedia && (activeMedia.type === 'tv' || activeMedia.type === 'anime');
+  streamEpisodeTag.hidden = !isSeries;
+  streamPrevBtn.hidden = !isSeries;
+  streamNextBtn.hidden = !isSeries;
+  if (!isSeries) return;
+
+  const season = activeSeasonMetadata();
+  streamEpisodeTag.textContent = (season?.name || ('Season ' + activeSeason)) + ' · Episode ' + activeEpisode;
+  streamPrevBtn.disabled = !seriesMetadataApi.stepSelection(activeSeriesSeasons, activeSeason, activeEpisode, -1);
+  streamNextBtn.disabled = !seriesMetadataApi.stepSelection(activeSeriesSeasons, activeSeason, activeEpisode, 1);
+};
+
+const showStreamChrome = () => {
+  clearTimeout(streamChromeHideTimeout);
+  inAppStreamDialog.classList.remove('controls-hidden');
+  streamChromeHideTimeout = setTimeout(() => {
+    if (inAppStreamDialog.open && streamStatusOverlay.hidden) inAppStreamDialog.classList.add('controls-hidden');
+  }, 3200);
 };
 
 const syncSaveButton = (button, item) => {
@@ -2118,10 +1534,8 @@ const saveActiveStreamProgress = () => {
   let progress = existing;
   if (!streamDirectVideo.hidden && Number.isFinite(streamDirectVideo.duration) && streamDirectVideo.duration > 0) {
     progress = streamDirectVideo.currentTime / streamDirectVideo.duration;
-  } else if (streamPlaybackStartedAt) {
-    const estimatedFeatureLength = 45 * 60 * 1000;
-    progress = Math.max(existing, Math.min(0.9, (Date.now() - streamPlaybackStartedAt) / estimatedFeatureLength));
   }
+  if (!streamPlaybackConfirmed && streamDirectVideo.hidden) return;
   recordProgress(activeMedia, Math.max(0.01, progress), {
     season: activeSeason,
     episode: activeEpisode
@@ -2129,18 +1543,71 @@ const saveActiveStreamProgress = () => {
 };
 
 const showStreamStatus = (title, detail, canRetry = false) => {
+  clearTimeout(streamStatusHideTimeout);
   streamStatusTitle.textContent = title;
   streamStatusDetail.textContent = detail;
   streamRetryButton.hidden = !canRetry;
   streamStatusOverlay.classList.toggle('failed', canRetry);
+  streamStatusOverlay.classList.remove('ready');
   streamStatusOverlay.hidden = false;
+  showStreamChrome();
 };
 
 const markStreamReady = () => {
+  if (streamPlaybackConfirmed || !activeMedia || !inAppStreamDialog.open) return;
+  streamPlaybackConfirmed = true;
   clearTimeout(streamLoadTimeout);
   streamLoadTimeout = null;
   streamStatusOverlay.classList.remove('failed');
-  streamStatusOverlay.hidden = true;
+  streamStatusOverlay.classList.add('ready');
+  const existing = userState.progress[mediaKey(activeMedia)];
+  const resumesSameSelection = existing
+    && Number(existing.season || 1) === activeSeason
+    && Number(existing.episode || 1) === activeEpisode;
+  recordProgress(activeMedia, resumesSameSelection ? Math.max(0.01, existing.progress || 0) : 0.01, {
+    season: activeSeason,
+    episode: activeEpisode
+  });
+  streamStatusHideTimeout = setTimeout(() => {
+    streamStatusOverlay.hidden = true;
+    streamStatusOverlay.classList.remove('ready');
+    showStreamChrome();
+  }, 420);
+};
+
+const stopStreamReadinessPoll = () => {
+  clearTimeout(streamReadinessPoll);
+  streamReadinessPoll = null;
+};
+
+const inspectStreamGuest = async () => {
+  stopStreamReadinessPoll();
+  if (!activeMedia || !inAppStreamDialog.open || streamInAppWebview.hidden || streamPlaybackConfirmed) return;
+  const generation = streamLoadGeneration;
+  try {
+    const result = await streamInAppWebview.executeJavaScript(`(() => {
+      const media = document.querySelector('video, audio');
+      const text = String(document.body?.innerText || '').toLowerCase();
+      return {
+        playing: Boolean(media && !media.paused && media.readyState >= 2),
+        failed: /failed to load|unable to play|playback error|video not found/.test(text)
+      };
+    })()`, true);
+    if (generation !== streamLoadGeneration || !inAppStreamDialog.open) return;
+    if (result?.playing) {
+      markStreamReady();
+      return;
+    }
+    if (result?.failed) {
+      tryNextStreamRoute();
+      return;
+    }
+  } catch {
+    // The provider may still be initializing; the bounded route timeout remains authoritative.
+  }
+  if (generation === streamLoadGeneration && activeMedia && inAppStreamDialog.open && !streamPlaybackConfirmed) {
+    streamReadinessPoll = setTimeout(inspectStreamGuest, 900);
+  }
 };
 
 const tryNextStreamRoute = () => {
@@ -2150,61 +1617,100 @@ const tryNextStreamRoute = () => {
   const providerKeys = Object.keys(STREAM_PROVIDERS);
   streamProviderAttempts += 1;
   if (streamProviderAttempts >= providerKeys.length) {
-    showStreamStatus('Playback is taking a break', 'No route answered. Try again in a moment.', true);
+    showStreamStatus('Unable to play right now', 'Try again in a moment or choose another title.', true);
     return;
   }
   const currentIndex = Math.max(0, providerKeys.indexOf(activeProviderKey));
   activeProviderKey = providerKeys[(currentIndex + 1) % providerKeys.length];
   streamServerSelect.value = activeProviderKey;
-  showStreamStatus('Trying another route…', 'Harbor is reconnecting without leaving the player.');
-  setTimeout(loadStreamSource, 180);
+  showStreamStatus(activeMedia.name, 'One moment — Harbor is getting it ready.');
+  setTimeout(() => {
+    if (inAppStreamDialog.open) loadStreamSource();
+  }, 180);
 };
 
 // Open In-App Streaming Player
-const startStreamPlayback = (item, season = 1, episode = 1) => {
+const startStreamPlayback = async (item, season = 1, episode = 1) => {
   activeMedia = item;
   activeSeason = season;
   activeEpisode = episode;
+  activeSeriesSeasons = [];
   streamPlaybackStartedAt = Date.now();
+  streamPlaybackConfirmed = false;
+  stopStreamReadinessPoll();
   streamProviderAttempts = 0;
-  recordProgress(item, Math.max(0.01, userState.progress[mediaKey(item)]?.progress || 0), { season, episode });
 
   const isSeries = item.type === 'tv' || item.type === 'anime';
 
   streamDialogTitle.textContent = item.name;
-  streamEpisodeTag.hidden = !isSeries;
-  streamEpisodeTag.textContent = 'S' + season + ':E' + episode;
+  if (mediaDetailDialog.open) mediaDetailDialog.close();
+  if (!inAppStreamDialog.open) inAppStreamDialog.showModal();
+  showStreamStatus(item.name, isSeries ? 'Getting your episode ready…' : 'Getting your movie ready…');
 
-  streamPrevBtn.hidden = !isSeries;
-  streamNextBtn.hidden = !isSeries;
+  if (isSeries) {
+    activeSeriesSeasons = await fetchTvShowDetails(item.tmdbId, item);
+    if (activeMedia !== item || !inAppStreamDialog.open) return;
+    const selection = seriesMetadataApi.clampSelection(activeSeriesSeasons, season, episode);
+    activeSeason = selection.season;
+    activeEpisode = selection.episode;
+  }
 
+  updateStreamEpisodeControls();
   streamServerSelect.value = activeProviderKey;
   loadStreamSource();
+};
 
-  if (mediaDetailDialog.open) mediaDetailDialog.close();
-  inAppStreamDialog.showModal();
+const destroyStreamHls = () => {
+  if (!streamHls) return;
+  streamHls.destroy();
+  streamHls = null;
 };
 
 const loadStreamSource = () => {
   if (!activeMedia) return;
+  streamLoadGeneration++;
   clearTimeout(streamLoadTimeout);
   streamLoadTimeout = null;
-  showStreamStatus('Starting playback…', 'Finding the best available route.');
+  stopStreamReadinessPoll();
+  streamPlaybackConfirmed = false;
+  destroyStreamHls();
 
   const isSeries = activeMedia.type === 'tv' || activeMedia.type === 'anime';
+  const season = activeSeasonMetadata();
+  showStreamStatus(
+    activeMedia.name,
+    isSeries
+      ? (season?.name || ('Season ' + activeSeason)) + ' · Episode ' + activeEpisode
+      : 'Getting your movie ready…'
+  );
 
   if (activeMedia.directStream) {
     streamInAppWebview.hidden = true;
     streamDirectVideo.hidden = false;
-    streamDirectVideo.src = activeMedia.directStream;
-    streamDirectVideo.play().catch(() => {});
+    const isHlsStream = /\.m3u8(?:$|[?#])/i.test(activeMedia.directStream);
+    if (isHlsStream && window.Hls?.isSupported()) {
+      streamHls = new window.Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 60 });
+      streamHls.attachMedia(streamDirectVideo);
+      streamHls.on(window.Hls.Events.MEDIA_ATTACHED, () => streamHls?.loadSource(activeMedia.directStream));
+      streamHls.on(window.Hls.Events.MANIFEST_PARSED, () => streamDirectVideo.play().catch(() => {}));
+      streamHls.on(window.Hls.Events.ERROR, (_event, data) => {
+        if (!data?.fatal) return;
+        if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) streamHls?.startLoad();
+        else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) streamHls?.recoverMediaError();
+        else showStreamStatus('Unable to play right now', 'This live channel is not responding. Try another channel.', true);
+      });
+    } else {
+      streamDirectVideo.src = activeMedia.directStream;
+      streamDirectVideo.play().catch(() => {});
+    }
     streamLoadTimeout = setTimeout(() => {
-      showStreamStatus('This feed is unavailable', 'The live source did not respond. Try again shortly.', true);
+      showStreamStatus('Unable to play right now', 'The live channel did not respond. Try again shortly.', true);
     }, 15000);
     return;
   }
 
   streamDirectVideo.pause();
+  destroyStreamHls();
   streamDirectVideo.hidden = true;
   streamInAppWebview.hidden = false;
 
@@ -2236,41 +1742,14 @@ const playAudioStream = (item) => {
 // Media Detail Dialog (Episodes & Sources)
 const openDetailDialog = async (item) => {
   activeMedia = item;
-  activeSeason = 1;
-  activeEpisode = 1;
+  const storedSelection = userState.progress[mediaKey(item)] || {};
+  activeSeason = Number(storedSelection.season) || 1;
+  activeEpisode = Number(storedSelection.episode) || 1;
 
   detailTitle.textContent = item.name;
   detailSubtitle.textContent = item.year + ' · ★ ' + item.rating + ' · ' + (item.sections || []).join(', ');
   detailOverview.textContent = item.overview;
   syncSaveButton(detailSaveBtn, item);
-
-  const isSeries = item.type === 'tv' || item.type === 'anime';
-  detailEpisodesWrap.hidden = !isSeries;
-
-  if (isSeries) {
-    detailSeasonSelect.innerHTML = '<option>Loading seasons…</option>';
-    const seasonsCount = await fetchTvShowDetails(item.tmdbId);
-    detailSeasonSelect.innerHTML = '';
-    for (let s = 1; s <= seasonsCount; s++) {
-      const opt = document.createElement('option');
-      opt.value = s;
-      opt.textContent = 'Season ' + s;
-      detailSeasonSelect.appendChild(opt);
-    }
-    detailSeasonSelect.value = activeSeason;
-    renderEpisodeChips(24);
-
-    detailSeasonSelect.onchange = (e) => {
-      activeSeason = parseInt(e.target.value, 10);
-      activeEpisode = 1;
-      renderEpisodeChips(24);
-    };
-  }
-
-  detailPlayBtn.onclick = () => {
-    mediaDetailDialog.close();
-    startStreamPlayback(activeMedia, activeSeason, activeEpisode);
-  };
 
   detailSaveBtn.onclick = () => {
     const saved = toggleFavorite(item);
@@ -2280,25 +1759,73 @@ const openDetailDialog = async (item) => {
     showStatusToast(saved ? 'Added to My List' : 'Removed from My List', item.name);
   };
 
-  mediaDetailDialog.showModal();
+  const isSeries = item.type === 'tv' || item.type === 'anime';
+  detailEpisodesWrap.hidden = !isSeries;
+  if (!mediaDetailDialog.open) mediaDetailDialog.showModal();
+
+  if (isSeries) {
+    activeSeriesSeasons = [];
+    detailSeasonRow.hidden = false;
+    detailSeasonSelect.disabled = true;
+    detailSeasonSelect.innerHTML = '<option>Loading seasons…</option>';
+    detailEpisodesList.innerHTML = '<p class="episode-loading-copy">Loading episodes…</p>';
+    activeSeriesSeasons = await fetchTvShowDetails(item.tmdbId, item);
+    if (activeMedia !== item || !mediaDetailDialog.open) return;
+    detailSeasonRow.hidden = !activeSeriesSeasons.length;
+    detailSeasonSelect.innerHTML = '';
+    for (const season of activeSeriesSeasons) {
+      const opt = document.createElement('option');
+      opt.value = season.number;
+      opt.textContent = season.name + ' · ' + season.episodeCount + (season.episodeCount === 1 ? ' episode' : ' episodes');
+      detailSeasonSelect.appendChild(opt);
+    }
+    const selection = seriesMetadataApi.clampSelection(activeSeriesSeasons, activeSeason, activeEpisode);
+    activeSeason = selection.season;
+    activeEpisode = selection.episode;
+    detailSeasonSelect.value = String(activeSeason);
+    detailSeasonSelect.disabled = !activeSeriesSeasons.length;
+    renderEpisodeChips();
+
+    detailSeasonSelect.onchange = (e) => {
+      activeSeason = parseInt(e.target.value, 10);
+      activeEpisode = 1;
+      renderEpisodeChips();
+    };
+  }
 };
 
-const renderEpisodeChips = (count) => {
+const renderEpisodeChips = () => {
   detailEpisodesList.innerHTML = '';
+  const season = activeSeasonMetadata();
+  const count = season?.episodeCount || 0;
+  if (!count) {
+    detailEpisodesList.innerHTML = '<p class="episode-loading-copy">Episode information is unavailable.</p>';
+    return;
+  }
   for (let ep = 1; ep <= count; ep++) {
     const btn = document.createElement('button');
     btn.className = 'ep-btn ' + (ep === activeEpisode ? 'active' : '');
     btn.textContent = 'Episode ' + ep;
     btn.onclick = () => {
       activeEpisode = ep;
-      renderEpisodeChips(count);
+      startStreamPlayback(activeMedia, activeSeason, activeEpisode);
     };
     detailEpisodesList.appendChild(btn);
   }
 };
 
-const handleMediaClick = (item) => {
+const handleMediaClick = async (item) => {
   activeMedia = item;
+
+  if (item.externalUrl) {
+    const result = await window.harbor?.openDirectoryLink?.(item.externalUrl);
+    showStatusToast(
+      result?.status === 'opened' ? 'Opened in your browser' : 'This link could not be opened',
+      item.domain || item.name
+    );
+    return;
+  }
+
   recordHistory(item);
 
   if (item._resume && item.category === 'Watch') {
@@ -2335,10 +1862,11 @@ const handleMediaClick = (item) => {
 const buildCard = (item) => {
   const card = createElement('article', 'media-card');
   card.dataset.category = item.category;
+  card.dataset.external = String(Boolean(item.externalUrl));
   const openButton = createElement('button', 'media-card-open');
   openButton.type = 'button';
-  openButton.setAttribute('aria-label', 'Open ' + item.name);
-  openButton.addEventListener('click', () => handleMediaClick(item));
+  openButton.setAttribute('aria-label', 'Open ' + item.name + (item.externalUrl ? ' in your browser' : ''));
+  openButton.addEventListener('click', () => void handleMediaClick(item));
 
   const art = createElement('span', 'media-art');
   const fallback = createElement('span', 'art-fallback');
@@ -2350,21 +1878,30 @@ const buildCard = (item) => {
 
   if (item.artworkUrl) {
     const image = document.createElement('img');
-    image.src = item.artworkUrl;
+    image.src = artworkSource(item.artworkUrl);
     image.alt = '';
     image.loading = 'lazy';
     image.referrerPolicy = 'no-referrer';
-    image.addEventListener('error', () => image.remove(), { once: true });
+    image.addEventListener('load', () => { fallback.hidden = true; }, { once: true });
+    image.addEventListener('error', () => { fallback.hidden = false; image.remove(); }, { once: true });
     art.append(image);
   }
 
   if (item.type === 'live') art.append(createElement('span', 'media-badge', 'Live'));
-  art.append(createElement('span', 'card-play', item.category === 'Read' ? '↗' : '▶'));
+  art.append(createElement('span', 'card-play', item.externalUrl ? '↗' : '▶'));
 
   const copy = createElement('span', 'media-card-copy');
   copy.append(
     createElement('strong', 'media-card-title', item.name),
-    createElement('span', 'media-card-meta', item.year + ' · ★ ' + item.rating + ' · ' + (item.sections || []).slice(0, 2).join(' · '))
+    createElement(
+      'span',
+      'media-card-meta',
+      item.externalUrl
+        ? (item.domain || 'Website') + ' · ' + (item.sections || []).slice(0, 2).join(' · ')
+        : (item.type === 'live'
+          ? 'Live · ' + (item.sections || []).slice(0, 2).join(' · ')
+          : item.year + ' · ★ ' + item.rating + ' · ' + (item.sections || []).slice(0, 2).join(' · '))
+    )
   );
   openButton.append(art, copy);
 
@@ -2380,7 +1917,8 @@ const buildCard = (item) => {
     if (myHarborDialog.open) renderMyHarbor();
   });
 
-  card.append(openButton, saveButton);
+  if (item.externalUrl) card.append(openButton);
+  else card.append(openButton, saveButton);
   if (item._resume) {
     const progress = createElement('span', 'card-progress');
     const fill = createElement('span', 'card-progress-fill');
@@ -2421,7 +1959,45 @@ const renderMyHarborSettings = () => {
     renderMyHarbor();
     showStatusToast('Viewing activity cleared');
   });
-  settings.append(clearActivity);
+  const dataSection = createElement('section', 'settings-data-section');
+  const dataCopy = createElement('div', 'setting-copy');
+  dataCopy.append(
+    createElement('strong', '', 'Your Harbor data'),
+    createElement('small', '', 'Back up or restore My List, viewing history, progress, and preferences. Installed-game paths are never included.')
+  );
+  const dataActions = createElement('div', 'settings-data-actions');
+  const exportData = Object.assign(createElement('button', 'button-secondary', 'Back up data'), { type: 'button' });
+  const importData = Object.assign(createElement('button', 'button-secondary', 'Restore backup'), { type: 'button' });
+  exportData.addEventListener('click', async () => {
+    exportData.disabled = true;
+    const result = await window.harbor?.exportUserData?.(userState).catch(() => ({ status: 'error' }));
+    exportData.disabled = false;
+    if (result?.status === 'saved') showStatusToast('Harbor data backed up', result.fileName || 'Backup saved');
+    else if (result?.status === 'error') showStatusToast('Backup could not be saved', result.message || 'Try another location.');
+  });
+  importData.addEventListener('click', async () => {
+    importData.disabled = true;
+    const result = await window.harbor?.importUserData?.().catch(() => ({ status: 'error' }));
+    importData.disabled = false;
+    if (result?.status === 'ready' && result.state) {
+      if (!window.confirm(`Restore ${result.fileName || 'this Harbor backup'}? This replaces the current My Harbor data on this device.`)) return;
+      userState = userStateApi.normalize(result.state);
+      persistUserState();
+      renderMyHarbor();
+      showStatusToast('Harbor data restored', 'My List, activity, progress, and preferences are ready.');
+    } else if (result?.status === 'invalid' || result?.status === 'error') {
+      showStatusToast('Backup could not be restored', result.message || 'Choose a valid Harbor backup.');
+    }
+  });
+  dataActions.append(exportData, importData);
+  dataSection.append(dataCopy, dataActions);
+  const showWelcome = Object.assign(createElement('button', 'button-secondary clear-activity-button', 'Show welcome guide'), { type: 'button' });
+  showWelcome.addEventListener('click', () => {
+    myHarborDialog.close();
+    welcomeDialog.showModal();
+    welcomeStartButton.focus();
+  });
+  settings.append(dataSection, showWelcome, clearActivity);
   return settings;
 };
 
@@ -2486,7 +2062,9 @@ const renderMyHarbor = () => {
   myHarborTabs.querySelectorAll('[data-my-harbor-tab]').forEach((button) => {
     const active = button.dataset.myHarborTab === activeMyHarborTab;
     button.classList.toggle('active', active);
-    button.setAttribute('aria-pressed', String(active));
+    button.setAttribute('aria-selected', String(active));
+    button.tabIndex = active ? 0 : -1;
+    if (active) myHarborContent.setAttribute('aria-labelledby', button.id);
   });
 
   if (activeMyHarborTab === 'settings') {
@@ -2526,6 +2104,7 @@ const renderMyHarbor = () => {
 };
 
 const openMyHarbor = (tab = 'list') => {
+  if (!myHarborDialog.open) myHarborReturnFocus = document.activeElement;
   activeMyHarborTab = tab;
   renderMyHarbor();
   if (!myHarborDialog.open) myHarborDialog.showModal();
@@ -2568,13 +2147,16 @@ const renderResources = () => {
   const formattedSearchTotal = searchState.total === null
     ? null
     : new Intl.NumberFormat().format(searchState.total);
-  const searchSummary = searchState.loading
+  const partialSearchNote = searchState.partial
+    ? ' Some catalog sources are temporarily unavailable, so these results may be incomplete.'
+    : '';
+  const searchSummary = (searchState.loading
     ? (visible.length
       ? visible.length + ' promising ' + (visible.length === 1 ? 'match' : 'matches') + ' so far. Searching ' + searchLoadingTarget + '…'
       : 'Searching ' + searchLoadingTarget + '…')
     : (formattedSearchTotal && searchState.total > visible.length
       ? 'Showing the best ' + visible.length + ' from ' + formattedSearchTotal + ' matches ' + searchLocation + '.'
-      : visible.length + ' ' + (visible.length === 1 ? 'match' : 'matches') + ' ' + searchLocation + '.');
+      : visible.length + ' ' + (visible.length === 1 ? 'match' : 'matches') + ' ' + searchLocation + '.')) + partialSearchNote;
 
   if (query.trim()) {
     const resultsSection = createElement('section', 'content-rail');
@@ -2607,9 +2189,9 @@ const renderResources = () => {
       buildRail('My List', userState.favorites, { description: 'Saved for later' }),
       buildRail('Popular on Harbor', popular, { description: 'A little bit of everything' }),
       buildRail('Watch tonight', getSectionItems('Watch'), { description: 'Movies, shows, anime, sports, and live TV' }),
-      buildRail('Listen now', getSectionItems('Listen'), { description: 'Music, radio, and more' }),
-      buildRail('Worth reading', getSectionItems('Read'), { description: 'Books, comics, manga, and light novels' }),
-      buildRail('Play next', getSectionItems('Play'), { description: 'Games from your personal library' })
+      buildRail('Listen elsewhere', getSectionItems('Listen'), { description: 'Curated music links from YarrList' }),
+      buildRail('Read elsewhere', getSectionItems('Read'), { description: 'Curated manga, comic, and eBook links from YarrList' }),
+      buildRail('Find games', getSectionItems('Play'), { description: 'Curated game links from YarrList' })
     ].filter(Boolean).forEach((rail) => rails.push(rail));
   } else if (activeSubcategory === 'All') {
     config.subcategories.slice(1).forEach((subcategory) => {
@@ -2625,14 +2207,24 @@ const renderResources = () => {
     const resultsSection = createElement('section', 'content-rail');
     const heading = createElement('div', 'rail-heading');
     const headingCopy = createElement('div');
+    const activeFilter = activeCategory === 'Watch'
+      ? watchBrowseApi.getFilter(activeSubcategory, activeWatchFilter)
+      : null;
     headingCopy.append(
-      createElement('h2', '', activeSubcategory),
-      createElement('p', '', categoryAvailabilityLabel(visible.length))
+      createElement('h2', '', activeFilter ? activeFilter.label + ' ' + activeSubcategory : activeSubcategory),
+      createElement('p', '', watchBrowseLoading ? 'Loading the latest picks…' : categoryAvailabilityLabel(visible.length))
     );
     heading.append(headingCopy);
     const grid = createElement('div', 'category-grid');
     grid.append(...visible.map(buildCard));
     resultsSection.append(heading, grid);
+    if (watchBrowseCanLoadMore && !watchBrowseLoading) {
+      const moreWrap = createElement('div', 'load-more-wrap');
+      const moreButton = Object.assign(createElement('button', 'button-secondary load-more-button', 'Show more'), { type: 'button' });
+      moreButton.addEventListener('click', loadMoreWatchBrowse);
+      moreWrap.append(moreButton);
+      resultsSection.append(moreWrap);
+    }
     rails.push(resultsSection);
   }
 
@@ -2654,24 +2246,36 @@ const renderResources = () => {
     ? visible[0]
     : (activeCategory === 'Home' ? getSectionItems('Watch')[0] : visible[0]);
   heroFeature.hidden = !heroMedia;
-  heroSection.style.setProperty('--hero-artwork', heroMedia?.artworkUrl ? 'url("' + heroMedia.artworkUrl.replace(/"/g, '%22') + '")' : 'none');
+  heroSection.style.setProperty('--hero-artwork', heroMedia?.artworkUrl ? 'url("' + artworkSource(heroMedia.artworkUrl).replace(/"/g, '%22') + '")' : 'none');
   if (heroMedia) {
     heroFeatureTitle.textContent = heroMedia.name;
-    heroFeatureMeta.textContent = heroMedia.year + ' · ' + (heroMedia.sections || []).slice(0, 2).join(' · ');
+    heroFeatureMeta.textContent = heroMedia.externalUrl
+      ? (heroMedia.domain || 'Website') + ' · YarrList'
+      : (heroMedia.type === 'live'
+        ? 'Live · ' + (heroMedia.sections || []).slice(0, 2).join(' · ')
+        : heroMedia.year + ' · ' + (heroMedia.sections || []).slice(0, 2).join(' · '));
     heroFeature.setAttribute('aria-label', 'Open featured title ' + heroMedia.name);
   }
   syncSaveButton(heroLibraryButton, heroMedia);
-  heroLibraryButton.hidden = !heroMedia;
+  heroLibraryButton.hidden = !heroMedia || Boolean(heroMedia.externalUrl);
   heroPrimaryButton.lastChild.textContent = ' ' + config.action;
 
-  emptyState.hidden = visible.length > 0 || searchState.loading;
-  resourceList.hidden = visible.length === 0;
+  emptyState.querySelector('h2').textContent = query.trim() && searchState.partial
+    ? 'Search is partly unavailable'
+    : 'Nothing here yet';
+  emptyState.querySelector('p').textContent = query.trim() && searchState.partial
+    ? 'Some catalog sources could not be reached. Try again in a moment or explore another category.'
+    : 'Try a different search or explore another category.';
+  emptyState.hidden = visible.length > 0 || searchState.loading || watchBrowseLoading;
+  resourceList.hidden = visible.length === 0 && !watchBrowseLoading;
   clearButton.hidden = !query;
   catalogCount.textContent = query.trim()
     ? (searchState.loading
       ? 'Searching ' + searchLoadingTarget + '…'
-      : (formattedSearchTotal || visible.length) + ' ' + searchScopeName + ' ' + ((searchState.total || visible.length) === 1 ? 'match' : 'matches'))
-    : 'Millions of movies, shows, songs, books, and games to explore';
+      : (formattedSearchTotal || visible.length) + ' ' + searchScopeName + ' ' + ((searchState.total || visible.length) === 1 ? 'match' : 'matches') + (searchState.partial ? ' · partial results' : ''))
+    : (activeCategory === 'Listen' || activeCategory === 'Read' || activeCategory === 'Play'
+      ? getSectionItems(activeCategory).length + ' curated links from YarrList'
+      : (watchBrowseLoading ? 'Loading the latest catalog…' : 'Millions of movies, shows, and live channels to explore'));
   renderCategories();
 };
 
@@ -2682,11 +2286,26 @@ const resetFilters = () => {
   searchSequence++;
   activeCategory = 'Home';
   activeSubcategory = 'All';
+  activeWatchFilter = '';
+  resetWatchBrowseState();
   query = '';
-  searchState = { term: '', loading: false, total: null, page: 1, canLoadMore: false };
+  searchState = { term: '', loading: false, total: null, page: 1, canLoadMore: false, partial: false };
   searchInput.value = '';
   currentMediaList = [...discoveryMediaList];
   renderResources();
+};
+
+const clearSearchPreservingScope = () => {
+  clearTimeout(searchTimeout);
+  searchController?.abort();
+  searchController = null;
+  searchSequence++;
+  query = '';
+  searchState = { term: '', loading: false, total: null, page: 1, canLoadMore: false, partial: false };
+  searchInput.value = '';
+  currentMediaList = [...discoveryMediaList];
+  renderResources();
+  searchInput.focus();
 };
 
 // Search locally on every keystroke, then merge remote results after a short debounce.
@@ -2694,8 +2313,12 @@ searchInput.addEventListener('input', (event) => {
   beginSearch(event.target.value);
 });
 
-clearButton.addEventListener('click', resetFilters);
+clearButton.addEventListener('click', clearSearchPreservingScope);
 showAllButton.addEventListener('click', resetFilters);
+compactSearchButton.addEventListener('click', () => {
+  searchInput.focus();
+  searchInput.select();
+});
 
 // Stream Controls
 streamServerSelect.addEventListener('change', (e) => {
@@ -2704,7 +2327,7 @@ streamServerSelect.addEventListener('change', (e) => {
   loadStreamSource();
 });
 
-streamInAppWebview.addEventListener('dom-ready', markStreamReady);
+streamInAppWebview.addEventListener('dom-ready', inspectStreamGuest);
 streamInAppWebview.addEventListener('did-fail-load', (event) => {
   if (event.errorCode === -3 || event.isMainFrame === false) return;
   tryNextStreamRoute();
@@ -2712,7 +2335,7 @@ streamInAppWebview.addEventListener('did-fail-load', (event) => {
 streamInAppWebview.addEventListener('render-process-gone', tryNextStreamRoute);
 streamDirectVideo.addEventListener('canplay', markStreamReady);
 streamDirectVideo.addEventListener('error', () => {
-  showStreamStatus('This feed is unavailable', 'The live source could not be played. Try again shortly.', true);
+  showStreamStatus('Unable to play right now', 'The live channel could not be played. Try again shortly.', true);
 });
 streamRetryButton.addEventListener('click', () => {
   streamProviderAttempts = 0;
@@ -2721,34 +2344,39 @@ streamRetryButton.addEventListener('click', () => {
   loadStreamSource();
 });
 
-streamNextBtn.onclick = () => {
+const changeStreamEpisode = (direction) => {
   if (!activeMedia) return;
+  const next = seriesMetadataApi.stepSelection(activeSeriesSeasons, activeSeason, activeEpisode, direction);
+  if (!next) return;
   saveActiveStreamProgress();
-  activeEpisode++;
+  activeSeason = next.season;
+  activeEpisode = next.episode;
   streamProviderAttempts = 0;
   streamPlaybackStartedAt = Date.now();
-  recordProgress(activeMedia, 0.01, { season: activeSeason, episode: activeEpisode });
-  streamEpisodeTag.textContent = 'S' + activeSeason + ':E' + activeEpisode;
+  updateStreamEpisodeControls();
   loadStreamSource();
 };
 
-streamPrevBtn.onclick = () => {
-  if (!activeMedia || activeEpisode <= 1) return;
-  saveActiveStreamProgress();
-  activeEpisode--;
-  streamProviderAttempts = 0;
-  streamPlaybackStartedAt = Date.now();
-  recordProgress(activeMedia, 0.01, { season: activeSeason, episode: activeEpisode });
-  streamEpisodeTag.textContent = 'S' + activeSeason + ':E' + activeEpisode;
-  loadStreamSource();
-};
+streamNextBtn.onclick = () => changeStreamEpisode(1);
+streamPrevBtn.onclick = () => changeStreamEpisode(-1);
+
+inAppStreamDialog.addEventListener('mousemove', showStreamChrome);
+inAppStreamDialog.addEventListener('focusin', showStreamChrome);
 
 closeStreamDialogBtn.addEventListener('click', () => {
   saveActiveStreamProgress();
   clearTimeout(streamLoadTimeout);
   streamLoadTimeout = null;
+  clearTimeout(streamStatusHideTimeout);
+  clearTimeout(streamChromeHideTimeout);
+  stopStreamReadinessPoll();
+  streamPlaybackConfirmed = false;
+  streamLoadGeneration++;
   streamDirectVideo.pause();
+  destroyStreamHls();
+  streamDirectVideo.removeAttribute('src');
   streamInAppWebview.src = 'about:blank';
+  inAppStreamDialog.classList.remove('controls-hidden');
   inAppStreamDialog.close();
   renderResources();
 });
@@ -2777,11 +2405,30 @@ heroLibraryButton.addEventListener('click', () => {
 
 playerButton.addEventListener('click', () => openMyHarbor());
 closeMyHarborButton.addEventListener('click', () => myHarborDialog.close());
+let myHarborReturnFocus = null;
 myHarborTabs.addEventListener('click', (event) => {
   const button = event.target.closest('[data-my-harbor-tab]');
   if (!button) return;
   activeMyHarborTab = button.dataset.myHarborTab;
   renderMyHarbor();
+});
+myHarborTabs.addEventListener('keydown', (event) => {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  const tabs = [...myHarborTabs.querySelectorAll('[data-my-harbor-tab]')];
+  const current = Math.max(0, tabs.indexOf(document.activeElement));
+  const next = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? tabs.length - 1
+      : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+  event.preventDefault();
+  activeMyHarborTab = tabs[next].dataset.myHarborTab;
+  renderMyHarbor();
+  tabs[next].focus();
+});
+myHarborDialog.addEventListener('close', () => {
+  if (myHarborReturnFocus?.isConnected && myHarborReturnFocus !== document.body) myHarborReturnFocus.focus();
+  myHarborReturnFocus = null;
 });
 openLocalLibraryButton.addEventListener('click', () => {
   myHarborDialog.close();
@@ -2790,7 +2437,26 @@ openLocalLibraryButton.addEventListener('click', () => {
 });
 closePlayerButton.addEventListener('click', () => playerDialog.close());
 
+const completeOnboarding = () => {
+  if (!userState.settings.onboardingComplete) {
+    userState.settings.onboardingComplete = true;
+    persistUserState();
+  }
+};
+welcomeDialog.addEventListener('close', completeOnboarding);
+welcomeStartButton.addEventListener('click', () => {
+  completeOnboarding();
+  welcomeDialog.close();
+  setActiveSection('Watch');
+});
+welcomeMyHarborButton.addEventListener('click', () => {
+  completeOnboarding();
+  welcomeDialog.close();
+  openMyHarbor('list');
+});
+
 let lastPlaybackProgressWrite = 0;
+let updateReturnFocus = null;
 const trackHtmlMediaProgress = (mediaElement) => {
   if (!activeMedia || !Number.isFinite(mediaElement.duration) || mediaElement.duration <= 0) return;
   const now = Date.now();
@@ -2815,12 +2481,33 @@ audioPlayer.addEventListener('ended', () => {
 });
 
 updateButton.addEventListener('click', async () => {
-  const version = await window.harbor?.getVersion?.();
+  updateReturnFocus = document.activeElement;
+  updateStatus.textContent = 'Checking the stable release channel…';
+  updateDialog.showModal();
+  updateTitle.focus({ preventScroll: true });
+  const [version, release, device] = await Promise.all([
+    window.harbor?.getVersion?.(),
+    window.harbor?.checkForUpdates?.(),
+    window.harbor?.getDiagnostics?.()
+  ]);
   if (version) {
     appVersion.textContent = 'Harbor ' + version;
-    updateStatus.textContent = 'You are using Harbor ' + version + '.';
   }
-  updateDialog.showModal();
+  if (release?.status === 'checked' && release.updateAvailable) {
+    updateStatus.textContent = `Harbor ${release.latestVersion} is available. Download it, then return here to verify and install it.`;
+  } else if (release?.status === 'checked') {
+    updateStatus.textContent = `Harbor ${release.currentVersion} is up to date on the Stable channel.`;
+  } else {
+    updateStatus.textContent = release?.message || `You are using Harbor ${version || ''}.`;
+  }
+  if (device) {
+    diagnosticSummary.textContent = `Harbor ${device.appVersion} · ${device.platform} ${device.osRelease} · ${device.architecture} · Electron ${device.electronVersion}`;
+  }
+});
+
+updateDialog.addEventListener('close', () => {
+  if (updateReturnFocus?.isConnected) updateReturnFocus.focus();
+  updateReturnFocus = null;
 });
 
 chooseUpdateButton.addEventListener('click', async () => {
@@ -2850,11 +2537,19 @@ document.addEventListener('keydown', (event) => {
     searchInput.select();
   }
   if (event.key === 'Escape') {
-    if (inAppStreamDialog.open) {
+    event.preventDefault();
+    if (welcomeDialog.open) {
+      welcomeDialog.close();
+    } else if (inAppStreamDialog.open) {
       saveActiveStreamProgress();
       clearTimeout(streamLoadTimeout);
       streamLoadTimeout = null;
+      stopStreamReadinessPoll();
+      streamPlaybackConfirmed = false;
+      streamLoadGeneration++;
       streamDirectVideo.pause();
+      destroyStreamHls();
+      streamDirectVideo.removeAttribute('src');
       streamInAppWebview.src = 'about:blank';
       inAppStreamDialog.close();
     } else if (mediaDetailDialog.open) {
@@ -2863,15 +2558,56 @@ document.addEventListener('keydown', (event) => {
       myHarborDialog.close();
     } else if (playerDialog.open) {
       playerDialog.close();
+    } else if (updateDialog.open) {
+      updateDialog.close();
+    } else if (query) {
+      clearSearchPreservingScope();
     }
   }
 });
 
-// Render initial full collection
+// Render Watch immediately, then add the validated desktop link directory.
 loadCachedCatalogTotals();
 renderResources();
+if (!userState.settings.onboardingComplete) {
+  requestAnimationFrame(() => {
+    welcomeDialog.showModal();
+    welcomeStartButton.focus();
+  });
+}
 void window.harbor?.getVersion?.().then((version) => {
   if (version) appVersion.textContent = 'Harbor ' + version;
 });
-void fetchTrendingMedia();
-void fetchCatalogTotals();
+
+copyDiagnosticsButton.addEventListener('click', async () => {
+  const result = await window.harbor?.copyDiagnostics?.();
+  showStatusToast(result?.status === 'copied' ? 'Diagnostics copied' : 'Diagnostics could not be copied');
+});
+
+supportPageButton.addEventListener('click', async () => {
+  const result = await window.harbor?.openTrustedPage?.('support');
+  if (result?.status !== 'opened') showStatusToast('Support page could not be opened');
+});
+
+tmdbPageButton.addEventListener('click', async () => {
+  const result = await window.harbor?.openTrustedPage?.('tmdb');
+  if (result?.status !== 'opened') showStatusToast('TMDB could not be opened');
+});
+setTimeout(() => {
+  void window.harbor?.checkForUpdates?.().then((release) => {
+    if (release?.status !== 'checked' || !release.updateAvailable) return;
+    updateButton.classList.add('update-available');
+    updateButton.setAttribute('aria-label', `Harbor ${release.latestVersion} is available`);
+    updateButton.title = `Harbor ${release.latestVersion} is available`;
+  });
+}, 3500);
+if (!window.harbor?.chooseUpdate) {
+  chooseUpdateButton.disabled = true;
+  chooseUpdateButton.textContent = 'Available in the installed app';
+  updateStatus.textContent = 'Update controls are available in the installed Harbor app.';
+}
+void (async () => {
+  await loadDirectoryLinks();
+  await fetchTrendingMedia();
+  void fetchCatalogTotals();
+})();

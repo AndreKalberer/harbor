@@ -4,7 +4,9 @@ const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mil
 
 const run = async () => {
   const targets = await fetch(`http://127.0.0.1:${port}/json`).then((response) => response.json());
-  const target = targets.find((item) => item.type === 'page' && item.title === 'Harbor');
+  const target = targets.find((item) => item.type === 'page'
+    && item.title === 'Harbor'
+    && /\/app\/index\.html(?:$|[?#])/i.test(item.url));
   if (!target) throw new Error('Harbor debug target was not found.');
 
   const socket = new WebSocket(target.webSocketDebuggerUrl);
@@ -45,10 +47,19 @@ const run = async () => {
   };
 
   await command('Runtime.enable');
-  await evaluate(`new Promise((resolve) => {
-    const ready = () => document.querySelectorAll('#resource-list .media-card').length > 0;
+  await evaluate(`new Promise((resolve, reject) => {
+    const deadline = Date.now() + 15000;
+    const ready = () => document.querySelectorAll('#resource-list .media-card').length > 0 && getSectionItems('Listen').length === 12;
     if (ready()) return resolve();
-    const timer = setInterval(() => { if (ready()) { clearInterval(timer); resolve(); } }, 25);
+    const timer = setInterval(() => {
+      if (ready()) {
+        clearInterval(timer);
+        resolve();
+      } else if (Date.now() >= deadline) {
+        clearInterval(timer);
+        reject(new Error('Harbor desktop catalog did not become ready.'));
+      }
+    }, 25);
   })`);
 
   const defaultFooter = await evaluate(`document.querySelector('#catalog-count').textContent`);
@@ -58,9 +69,7 @@ const run = async () => {
 
   const categoryBadges = await evaluate(`(() => {
     applyCatalogTotalValues(new Map([
-      ['movies', 1200000], ['shows', 230000], ['anime', 11414], ['sports', 485],
-      ['music', 39920349], ['soundtracks', 66728], ['radio', 57430], ['audiobooks', 1367],
-      ['books', 79200], ['comics', 100892], ['manga', 15600], ['lightNovels', 2044]
+      ['movies', 1200000], ['shows', 230000], ['anime', 11414], ['sports', 485]
     ]));
     const result = {};
     for (const section of ['Watch', 'Listen', 'Read', 'Play']) {
@@ -74,10 +83,10 @@ const run = async () => {
     return result;
   })()`);
   const expectedBadges = {
-    Watch: { All: '1.4M', Movies: '1.2M', 'TV Shows': '230K', Anime: '11.4K', Sports: '485', 'Live TV': 'Live' },
-    Listen: { All: '40M+', Music: '39.9M', Soundtracks: '66.7K', Radio: '57.4K', Podcasts: 'Full', Audiobooks: '1.4K' },
-    Read: { All: '197.7K+', Books: '79.2K', Comics: '100.9K', Manga: '15.6K', 'Light Novels': '2K' },
-    Play: { All: 'Library', 'PC Games': 'Library', Action: 'Library', RPG: 'Library', Adventure: 'Library', Strategy: 'Library' }
+    Watch: { All: '1.4M', Movies: '1.2M', 'TV Shows': '230K', Anime: '11.4K', Sports: '485', 'Live TV': '' },
+    Listen: { All: '12', Music: '12' },
+    Read: { All: '24', Comics: '5', Manga: '10', 'eBooks & Audiobooks': '9' },
+    Play: { All: '8', Games: '8' }
   };
   if (JSON.stringify(categoryBadges) !== JSON.stringify(expectedBadges)) {
     throw new Error('One or more category badges still reports the visible sample: ' + JSON.stringify(categoryBadges));
@@ -90,8 +99,8 @@ const run = async () => {
     renderResources();
     return document.querySelector('.content-rail .rail-heading p')?.textContent;
   })()`);
-  if (musicCategoryDescription !== 'Showing 5 featured picks from 39.9M searchable items') {
-    throw new Error('The Music category does not distinguish featured picks from the searchable catalog: ' + musicCategoryDescription);
+  if (musicCategoryDescription !== '12 curated links from YarrList') {
+    throw new Error('The Music category does not describe its curated link directory: ' + musicCategoryDescription);
   }
   await evaluate(`setActiveSection('Home')`);
 
@@ -168,8 +177,8 @@ const run = async () => {
   if (raced.names[0] !== 'Beta' || raced.names.some((name) => name.includes('Alpha Wrong'))) {
     throw new Error('A stale or poorly ranked search replaced the latest results: ' + JSON.stringify(raced));
   }
-  if (!raced.title.includes('beta') || !raced.footer.startsWith('343 Harbor matches')) {
-    throw new Error('The full-catalog search count was not reported correctly: ' + JSON.stringify(raced));
+  if (!raced.title.includes('beta') || raced.footer !== raced.names.length + ' Harbor matches') {
+    throw new Error('The full-catalog search count was not truthful to the visible results: ' + JSON.stringify(raced));
   }
 
   const cached = await evaluate(`(() => {
@@ -194,14 +203,15 @@ const run = async () => {
     title: document.querySelector('#directory-title').textContent,
     footer: document.querySelector('#catalog-count').textContent,
     categories: [...new Set(currentMediaList.map((item) => item.category))],
+    count: currentMediaList.length,
     canLoadMore: searchState.canLoadMore,
-    requests: [...window.__harborSearchRequests]
+    requests: window.__harborSearchRequests.filter((url) => url.includes('/search/movie?') || url.includes('/search/tv?'))
   })`);
   if (watchScoped.categories.join(',') !== 'Watch'
       || watchScoped.requests.length !== 2
       || watchScoped.requests.some((url) => !url.includes('themoviedb.org'))
       || !watchScoped.title.startsWith('Watch results')
-      || !watchScoped.footer.startsWith('321 Watch matches')
+      || watchScoped.footer !== watchScoped.count + ' Watch matches'
       || !watchScoped.canLoadMore) {
     throw new Error('Watch search escaped its active tab: ' + JSON.stringify(watchScoped));
   }
@@ -214,12 +224,16 @@ const run = async () => {
   const watchPageTwo = await evaluate(`({
     page: searchState.page,
     categories: [...new Set(currentMediaList.map((item) => item.category))],
-    requests: [...window.__harborSearchRequests]
+    count: currentMediaList.length,
+    canLoadMore: searchState.canLoadMore,
+    requests: window.__harborSearchRequests.filter((url) => url.includes('/search/movie?') || url.includes('/search/tv?'))
   })`);
   if (watchPageTwo.page !== 2
       || watchPageTwo.categories.join(',') !== 'Watch'
       || watchPageTwo.requests.length !== 2
-      || watchPageTwo.requests.some((url) => !url.includes('page=2'))) {
+      || watchPageTwo.requests.some((url) => !url.includes('page=2'))
+      || watchPageTwo.count !== watchScoped.count
+      || watchPageTwo.canLoadMore) {
     throw new Error('Watch search pagination failed: ' + JSON.stringify(watchPageTwo));
   }
 
@@ -233,7 +247,7 @@ const run = async () => {
   const animeScoped = await evaluate(`({
     scope: [activeCategory, activeSubcategory],
     types: [...new Set(currentMediaList.map((item) => item.type))],
-    requests: [...window.__harborSearchRequests],
+    requests: window.__harborSearchRequests.filter((url) => url.includes('/search/movie?') || url.includes('/search/tv?')),
     placeholder: document.querySelector('#resource-search').placeholder
   })`);
   if (animeScoped.scope.join('|') !== 'Watch|Anime'
@@ -250,7 +264,7 @@ const run = async () => {
     renderCategories();
     renderResources();
     window.__harborSearchRequests = [];
-    beginSearch('beta');
+    beginSearch('mangadex');
   })()`);
   await delay(500);
   const mangaScoped = await evaluate(`({
@@ -261,42 +275,40 @@ const run = async () => {
   })`);
   if (mangaScoped.scope.join('|') !== 'Read|Manga'
       || mangaScoped.categories.join(',') !== 'Read'
-      || mangaScoped.types.join(',') !== 'manga'
-      || mangaScoped.requests.length !== 1
-      || !mangaScoped.requests[0].includes('openlibrary.org')) {
+      || mangaScoped.types.join(',') !== 'external'
+      || mangaScoped.requests.length !== 0) {
     throw new Error('Manga search escaped its active subcategory: ' + JSON.stringify(mangaScoped));
   }
 
   await evaluate(`(() => {
     setActiveSection('Listen');
-    activeSubcategory = 'Podcasts';
+    activeSubcategory = 'Music';
     renderCategories();
     renderResources();
     window.__harborSearchRequests = [];
-    beginSearch('beta');
+    beginSearch('spotube');
   })()`);
   await delay(500);
-  const podcastScoped = await evaluate(`({
+  const musicScoped = await evaluate(`({
     scope: [activeCategory, activeSubcategory],
     categories: [...new Set(currentMediaList.map((item) => item.category))],
     types: [...new Set(currentMediaList.map((item) => item.type))],
     requests: [...window.__harborSearchRequests]
   })`);
-  if (podcastScoped.scope.join('|') !== 'Listen|Podcasts'
-      || podcastScoped.categories.join(',') !== 'Listen'
-      || podcastScoped.types.join(',') !== 'podcast'
-      || podcastScoped.requests.length !== 1
-      || !podcastScoped.requests[0].includes('media=podcast')) {
-    throw new Error('Podcast search escaped its active subcategory: ' + JSON.stringify(podcastScoped));
+  if (musicScoped.scope.join('|') !== 'Listen|Music'
+      || musicScoped.categories.join(',') !== 'Listen'
+      || musicScoped.types.join(',') !== 'external'
+      || musicScoped.requests.length !== 0) {
+    throw new Error('Music directory search escaped its local link catalog: ' + JSON.stringify(musicScoped));
   }
 
   await evaluate(`(() => {
     setActiveSection('Play');
-    activeSubcategory = 'Action';
+    activeSubcategory = 'Games';
     renderCategories();
     renderResources();
     window.__harborSearchRequests = [];
-    beginSearch('Grand Theft');
+    beginSearch('fitgirl');
   })()`);
   await delay(300);
   const playScoped = await evaluate(`({
@@ -304,7 +316,7 @@ const run = async () => {
     categories: [...new Set(currentMediaList.map((item) => item.category))],
     requests: [...window.__harborSearchRequests]
   })`);
-  if (playScoped.names[0] !== 'Grand Theft Auto V'
+  if (playScoped.names[0] !== 'fitgirl-repacks.site'
       || playScoped.categories.join(',') !== 'Play'
       || playScoped.requests.length !== 0) {
     throw new Error('Play search escaped its local subcategory: ' + JSON.stringify(playScoped));
@@ -318,10 +330,10 @@ const run = async () => {
   })()`);
 
   socket.close();
-  process.stdout.write(`${JSON.stringify({ defaultFooter, categoryBadges, musicCategoryDescription, immediate, raced, cached, watchScoped, watchPageTwo, animeScoped, mangaScoped, podcastScoped, playScoped }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ defaultFooter, categoryBadges, musicCategoryDescription, immediate, raced, cached, watchScoped, watchPageTwo, animeScoped, mangaScoped, musicScoped, playScoped }, null, 2)}\n`);
 };
 
 run().catch((error) => {
   console.error(error);
-  process.exitCode = 1;
+  process.exit(1);
 });
