@@ -42,6 +42,18 @@ assert.equal(migrated.settings.autoplayNext, false);
 assert.equal(migrated.settings.onboardingComplete, false);
 assert.equal(JSON.parse(legacyStorage.values.get(userState.CURRENT_KEY)).version, 2);
 
+const liveFavorite = userState.normalize({ favorites: [{
+  id: 'iptv-test', name: 'Harbor Sports', category: 'Watch', type: 'live', directStream: 'https://media.example/live.m3u8',
+  channelId: 'HarborSports.us', feedId: 'SD', countryCode: 'US', languageCodes: ['eng'], sports: ['basketball'],
+  streamCandidates: [
+    { url: 'https://media.example/live.m3u8', type: 'hls', quality: '1080p' },
+    { url: 'http://unsafe.example/live.m3u8', type: 'hls' }
+  ]
+}] }).favorites[0];
+assert.equal(liveFavorite.channelId, 'HarborSports.us');
+assert.equal(liveFavorite.streamCandidates.length, 1);
+assert.equal(liveFavorite.directStream, 'https://media.example/live.m3u8');
+
 const corruptStorage = createStorage({
   [userState.CURRENT_KEY]: '{broken',
   'harbor:user-state:v1': JSON.stringify({ favorites: [{ id: 'legacy', name: 'Recovered favorite' }] })

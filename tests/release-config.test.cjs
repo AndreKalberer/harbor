@@ -28,7 +28,7 @@ assert(/\n  verify:\r?\n[\s\S]*Validate release tag and package version/.test(wo
 assert(/\n  build:\r?\n    needs: verify/.test(workflow) && /\n  tv:\r?\n    needs: verify/.test(workflow), 'Build jobs can bypass tag/version verification.');
 assert((workflow.match(/GITHUB_EVENT_NAME[^\n]*pull_request/g) || []).length >= 2, 'Pull-request catalog fallback is missing from a build job.');
 assert(!workflow.includes('com.harbor.tv_2.0.0_all.ipk'), 'TV artifact naming is hardcoded to one version.');
-assert(androidActivity.includes('file:///android_asset/index.html'), 'Android TV still depends on the hosted shell at startup.');
+assert(androidActivity.includes('https://appassets.androidplatform.net/assets/index.html') && androidActivity.includes('WebViewAssetLoader'), 'Android TV does not load its bundled interface from a secure app-assets origin.');
 assert(stageTv.includes("buildRoot, 'android-assets'") && stageTv.includes("buildRoot, 'samsung'"), 'Self-contained TV assets are not staged.');
 assert(stageTv.includes('lgManifest.version = version') && stageTv.includes('stagedSamsungManifest'), 'TV manifest versions are not derived during staging.');
 assert(stageTv.includes("replaceAll('src=\"../assets/harbor-mark.svg\"'"), 'LG staging does not inline every Harbor logo.');

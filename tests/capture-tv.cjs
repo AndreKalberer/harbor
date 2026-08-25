@@ -97,13 +97,37 @@ const run = async () => {
     category('Sports').focus();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
     const downReachedFilter = document.activeElement === document.querySelector('#watch-filter-row .active');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
+    const downReachedLiveFacet = document.activeElement === document.querySelector('#live-country-select');
+    if (!document.querySelector('#card-grid .media-card')) {
+      const fixtureCard = document.createElement('button'); fixtureCard.className = 'media-card focusable'; fixtureCard.type = 'button'; document.querySelector('#card-grid').appendChild(fixtureCard);
+    }
+    document.querySelector('#live-filter-done').focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
+    const downReachedLiveCard = document.activeElement === document.querySelector('#card-grid .media-card');
     category('Live TV').click();
     const liveFilters = [...document.querySelectorAll('#watch-filter-row button')].map((button) => button.textContent.trim());
     document.querySelector('[data-action="watch"]').click();
-    return { sportsFilters, liveFilters, downReachedFilter };
+    return { sportsFilters, liveFilters, downReachedFilter, downReachedLiveFacet, downReachedLiveCard };
   })()`);
-  if (watchFilters.sportsFilters.length < 8 || watchFilters.liveFilters.length < 8 || !watchFilters.downReachedFilter) {
+  if (watchFilters.sportsFilters.length < 8 || watchFilters.liveFilters.length < 8 || !watchFilters.downReachedFilter || !watchFilters.downReachedLiveFacet || !watchFilters.downReachedLiveCard) {
     throw new Error('TV Watch filters or D-pad lane failed: ' + JSON.stringify(watchFilters));
+  }
+  const liveGuide = await evaluate(`(async () => {
+    const original = window.HarborWatchBrowse.loadLiveGuide;
+    window.HarborWatchBrowse.loadLiveGuide = () => Promise.resolve({ status: 'available', provider: 'Harbor fixture', language: 'en', programmes: [{ title: 'Live Match', description: 'TV guide fixture.', start: new Date().toISOString(), stop: new Date(Date.now() + 3600000).toISOString(), current: true }] });
+    document.querySelector('[data-action="watch"]').click();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const liveCard = [...document.querySelectorAll('#card-grid .media-card')].find((card) => card.querySelector('h3')?.textContent === 'World Sports HD');
+    liveCard.click();
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    const result = { visible: !document.querySelector('#detail-live-guide').hidden, programmes: [...document.querySelectorAll('#detail-guide-list strong')].map((node) => node.textContent.trim()), playVisible: !document.querySelector('#detail-play').hidden };
+    document.querySelector('[data-close="detail"]').click();
+    window.HarborWatchBrowse.loadLiveGuide = original;
+    return result;
+  })()`);
+  if (!liveGuide.visible || !liveGuide.playVisible || liveGuide.programmes.join('|') !== 'Live Match') {
+    throw new Error('TV live guide detail failed: ' + JSON.stringify(liveGuide));
   }
   const searchNavigation = await evaluate(`(() => {
     document.querySelector('#search-button').click();
@@ -195,7 +219,7 @@ const run = async () => {
     delete window.__originalTvState;
   })()`);
   socket.close();
-  process.stdout.write(JSON.stringify({ shell, watchFilters, searchNavigation, interaction, bleach }, null, 2) + '\n');
+  process.stdout.write(JSON.stringify({ shell, watchFilters, liveGuide, searchNavigation, interaction, bleach }, null, 2) + '\n');
 };
 
 run().catch((error) => {

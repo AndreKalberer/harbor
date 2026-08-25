@@ -467,6 +467,31 @@ label[for]:focus-visible {
 .watch-filter-button:hover { border-color: #8d6ddd; color: var(--text); }
 .watch-filter-button.active { background: rgba(164, 103, 255, 0.2); border-color: #9b79ed; color: #f1eaff; }
 
+.live-directory-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(150px, 220px) minmax(150px, 220px);
+  gap: 10px;
+  align-items: end;
+  margin: -14px 0 28px;
+  padding: 14px;
+  border: 1px solid rgba(190, 167, 255, 0.18);
+  border-radius: 12px;
+  background: linear-gradient(120deg, rgba(164, 103, 255, 0.09), rgba(20, 13, 29, 0.58));
+}
+
+.live-directory-heading { display: grid; gap: 4px; }
+.live-directory-heading strong { font-size: 14px; }
+.live-directory-controls label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.live-directory-controls select {
+  min-height: 38px;
+  padding: 0 34px 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text);
+}
+.live-directory-status { grid-column: 1 / -1; margin: 2px 0 0; color: var(--muted); font-size: 11px; }
+
 .resource-list { display: grid; gap: 34px; }
 
 .content-rail { min-width: 0; }
@@ -785,6 +810,17 @@ dialog::backdrop { background: rgba(3, 1, 7, 0.82); backdrop-filter: blur(8px); 
 
 .detail-dialog-body { padding: 25px; }
 .detail-overview { margin: 0; color: var(--muted-strong); font-size: 14px; line-height: 1.65; }
+
+.detail-live-guide { margin-top: 22px; padding: 17px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255, 255, 255, 0.025); }
+.detail-guide-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; }
+.detail-guide-heading h3 { margin: 0; font-size: 16px; }
+.detail-live-guide > p { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+.detail-guide-list { display: grid; gap: 8px; margin: 13px 0 0; padding: 0; list-style: none; }
+.detail-guide-list li { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 12px; padding-top: 9px; border-top: 1px solid var(--line); }
+.detail-guide-list time { color: #bca8ed; font: 700 10px/1.4 var(--mono); }
+.detail-guide-list strong { display: block; font-size: 13px; }
+.detail-guide-list p { margin: 3px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.detail-guide-list li.current strong::after { content: ' ON NOW'; margin-left: 7px; color: var(--coral); font: 800 8px/1 var(--mono); letter-spacing: 0.08em; }
 
 .detail-episodes-wrap { margin-top: 24px; }
 .episodes-select-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -1111,6 +1147,8 @@ dialog::backdrop { background: rgba(3, 1, 7, 0.82); backdrop-filter: blur(8px); 
   .hero-feature { right: 28px; bottom: 44px; width: 250px; min-height: 140px; }
   .hero-feature strong { font-size: 19px; }
   .browse-shell { width: calc(100% - 56px); }
+  .live-directory-controls { grid-template-columns: 1fr 1fr; }
+  .live-directory-heading { grid-column: 1 / -1; }
   .rail-items { grid-auto-columns: minmax(185px, 1fr); }
   .search-grid,
   .category-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }

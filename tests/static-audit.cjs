@@ -25,6 +25,7 @@ const tvStyles = read(path.join('tv', 'tv.css'));
 const tvStage = read(path.join('scripts', 'stage-tv.cjs'));
 const releasePackager = read(path.join('scripts', 'package-current-release.cjs'));
 const seriesMetadata = read(path.join('shared', 'series-metadata.js'));
+const liveTv = read(path.join('shared', 'live-tv.js'));
 const watchBrowse = read(path.join('shared', 'watch-browse.js'));
 const playbackProviders = read(path.join('shared', 'playback-providers.js'));
 const userState = read(path.join('shared', 'user-state.js'));
@@ -65,6 +66,7 @@ assert(main.includes("url.protocol !== 'https:'") && main.includes('readDirector
 assert(appHtml.includes('<script src="config.js"></script>'), 'Desktop build configuration is not loaded.');
 assert(tvHtml.includes('<script src="config.js"></script>'), 'TV build configuration is not loaded.');
 assert(appHtml.includes('../shared/series-metadata.js') && tvHtml.includes('../shared/series-metadata.js'), 'Shared episode metadata behavior is not loaded.');
+assert(appHtml.includes('../shared/live-tv.js') && tvHtml.includes('../shared/live-tv.js'), 'Shared IPTV-org directory behavior is not loaded on both clients.');
 assert(appHtml.includes('../shared/watch-browse.js') && tvHtml.includes('../shared/watch-browse.js'), 'Shared Watch subcategories are not loaded on both clients.');
 assert(appHtml.includes('../shared/playback-providers.js'), 'Desktop playback provider registry is not loaded.');
 assert(appHtml.includes('../shared/user-state.js'), 'Desktop user-state migration layer is not loaded.');
@@ -104,10 +106,15 @@ for (const section of ['Movies', 'TV Shows', 'Anime', 'Sports', 'Live TV']) {
   assert(watchBrowse.includes(section), `Shared Watch filters are missing ${section}.`);
 }
 assert(watchBrowse.includes('loadLiveChannels') && watchBrowse.includes('parseM3u'), 'Playable Sports and Live TV catalogs are missing.');
+for (const protection of ['blocklist.json', 'supportedStreamType', 'markStreamFailure', 'isQuarantined', 'loadGuide']) {
+  assert(liveTv.includes(protection), `Live-channel protection is missing: ${protection}`);
+}
+assert(appHtml.includes('id="live-country-select"') && appHtml.includes('id="live-language-select"'), 'Desktop live country/language filters are missing.');
+assert(renderer.includes('loadLiveGuide') && renderer.includes('tryNextLiveStream'), 'Desktop live guide or alternate-stream recovery is missing.');
 assert(renderer.includes('seriesMetadataApi.normalizeSeriesSeasons'), 'Desktop series details do not use canonical season metadata.');
 assert(!renderer.includes('renderEpisodeChips(24)'), 'Desktop still fabricates 24 episodes for every season.');
 assert(!renderer.includes('episodesPerSeason') && !renderer.includes('seasonsCount'), 'Desktop catalog still carries fabricated series counts.');
-assert(!appHtml.includes('detail-play-btn') && !appHtml.includes('Play now'), 'Desktop series details still require a separate Play now action.');
+assert(appHtml.includes('id="detail-play-btn"') && desktopDetailFlow.includes("const isLive = item.type === 'live'") && desktopDetailFlow.includes('detailPlayBtn.hidden = !isLive'), 'Desktop live playback is not isolated from series episode actions.');
 assert(renderer.includes('startStreamPlayback(activeMedia, activeSeason, activeEpisode);'), 'Desktop episode buttons do not start playback directly.');
 assert(desktopDetailFlow.indexOf('mediaDetailDialog.showModal()') < desktopDetailFlow.indexOf('activeSeriesSeasons = await fetchTvShowDetails'), 'Desktop series details do not expose their loading state immediately.');
 assert(renderer.includes("failures.add(provider.key)") && renderer.includes('partial results'), 'Desktop search does not disclose partial provider failures.');
@@ -139,6 +146,7 @@ for (const artifact of ['Harbor-Windows', 'Harbor-Linux', 'Harbor-macOS', 'SHA25
 assert(!tvHtml.includes('sandbox='), 'TV player still uses an iframe sandbox that its playback providers reject.');
 assert(!tvHtml.includes('data-section="Watch"') && tvHtml.includes('data-action="watch"'), 'The visible TV Watch navigation label was not removed.');
 assert(tvHtml.includes('id="watch-filter-row"'), 'TV Watch subcategory filters are missing.');
+assert(tvHtml.includes('id="live-country-select"') && tvHtml.includes('id="live-language-select"'), 'TV live country/language filters are missing.');
 assert(!tvHtml.includes('allow-popups'), 'TV player grants popup permission.');
 assert(tvHtml.includes('id="tv-frame" class="player-frame focusable"') && tvHtml.includes('tabindex="0"'), 'TV player is not reachable with a 5-way remote.');
 assert(tvScript.includes('function focusPlayerFrame()') && tvScript.includes('tvFrame.contentWindow.focus()'), 'TV player does not hand remote focus to the embedded controls.');
@@ -157,6 +165,7 @@ for (const feature of ['fetchSeriesMetadata', 'renderEpisodeBrowser', 'loadPlaye
 }
 assert(!tvScript.includes("'/1/1'"), 'TV playback is still hardcoded to season 1 episode 1.');
 assert(tvScript.includes('No titles found'), 'TV zero-result searches do not have an empty state.');
+assert(tvScript.includes('loadLiveGuide') && tvScript.includes('tryNextLiveStream'), 'TV live guide or alternate-stream recovery is missing.');
 assert(tvScript.includes('detailPlay.hidden = isSeries') && tvScript.includes('openPlayer(state.active);'), 'TV episode buttons do not start playback directly.');
 assert(tvScript.includes("current === searchInput && (direction === 'right' || direction === 'down')") && tvScript.includes("document.activeElement === searchInput"), 'TV search cannot be reached and submitted through the remote path.');
 assert(tvScript.includes('artFallback.hidden = true') && tvScript.includes("card.setAttribute('aria-label'"), 'TV poster fallbacks or card accessible names are not normalized.');
@@ -174,7 +183,7 @@ for (const file of ['config.js', 'tv.css', 'tv.js']) {
 }
 assert(tvStage.includes("'nonce-${lgNonce}'"), 'The LG bundle does not preserve CSP protection for inline assets.');
 assert(tvStage.includes("shared', 'series-metadata.js"), 'The LG bundle does not include episode metadata behavior.');
-assert(tvStage.includes("shared', 'watch-browse.js") && tvStage.includes("'hls.js', 'dist', 'hls.min.js'"), 'TV packages do not include Watch filters and HLS playback.');
+assert(tvStage.includes("shared', 'live-tv.js") && tvStage.includes("shared', 'watch-browse.js") && tvStage.includes("'hls.js', 'dist', 'hls.min.js'"), 'TV packages do not include the live directory, Watch filters, and HLS playback.');
 assert(releasePackager.includes("directoryName.startsWith('.desktop-test-profile')"), 'Release source archives do not exclude local packaged-QA profiles.');
 assert(lgManifest.id === 'com.harbor.tv' && lgManifest.version === packageJson.version, 'LG webOS manifest is out of sync.');
 assert(samsungManifest.includes('tizen:profile name="tv-samsung"'), 'Samsung TV profile is missing.');
@@ -184,6 +193,7 @@ for (const origin of ['api.themoviedb.org', 'image.tmdb.org', 'itunes.apple.com'
 assert(samsungManifest.includes('iptv-org.github.io'), 'Samsung network access is missing the public live catalog.');
 assert(androidManifest.includes('android.intent.category.LEANBACK_LAUNCHER'), 'Android TV launcher support is missing.');
 assert(androidGradle.includes('file("../../build/android-assets")'), 'Android bundle assets path is incorrect.');
+assert(androidGradle.includes('androidx.webkit:webkit') && read(path.join('tv', 'android', 'app', 'src', 'main', 'java', 'com', 'harbor', 'tv', 'MainActivity.java')).includes('WebViewAssetLoader'), 'Android TV does not use the secure app-assets origin.');
 assert(workflow.includes('Harbor-TV-LG-webOS') && workflow.includes('Harbor-TV-Android-Fire'), 'TV release downloads are missing from CI.');
 assert((workflow.match(/configure-build\.cjs --tv --require/g) || []).length >= 2, 'TV releases and Pages are not configured for the full catalog.');
 

@@ -1,8 +1,9 @@
 (function (root, factory) {
-  var api = factory();
+  var liveTvApi = typeof module === 'object' && module.exports ? require('./live-tv.js') : root && root.HarborLiveTv;
+  var api = factory(liveTvApi);
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (root) root.HarborWatchBrowse = api;
-}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (liveTvApi) {
   'use strict';
 
   var IPTV_BASE = 'https://iptv-org.github.io/iptv/categories/';
@@ -43,13 +44,13 @@
     ],
     Sports: [
       { id: 'all-sports', label: 'All Sports', source: 'iptv', playlistCategory: 'sports' },
-      { id: 'football', label: 'NFL & Football', source: 'iptv', playlistCategory: 'sports', terms: ['nfl', 'american football', 'gridiron', 'football'] },
-      { id: 'basketball', label: 'Basketball', source: 'iptv', playlistCategory: 'sports', terms: ['basketball', 'nba', 'wnba'] },
-      { id: 'baseball', label: 'Baseball', source: 'iptv', playlistCategory: 'sports', terms: ['baseball', 'mlb'] },
-      { id: 'hockey', label: 'Hockey', source: 'iptv', playlistCategory: 'sports', terms: ['hockey', 'nhl'] },
-      { id: 'soccer', label: 'Soccer', source: 'iptv', playlistCategory: 'sports', terms: ['soccer', 'futbol', 'fútbol', 'premier league', 'uefa', 'fifa', 'la liga'] },
-      { id: 'combat', label: 'Combat Sports', source: 'iptv', playlistCategory: 'sports', terms: ['boxing', 'mma', 'ufc', 'wrestling', 'fight'] },
-      { id: 'motorsports', label: 'Motorsports', source: 'iptv', playlistCategory: 'sports', terms: ['motor', 'racing', 'formula', 'nascar', 'auto sport'] },
+      { id: 'football', label: 'American Football', source: 'iptv', playlistCategory: 'sports', sport: 'american-football', terms: ['nfl', 'american football', 'gridiron'] },
+      { id: 'basketball', label: 'Basketball', source: 'iptv', playlistCategory: 'sports', sport: 'basketball', terms: ['basketball', 'nba', 'wnba'] },
+      { id: 'baseball', label: 'Baseball', source: 'iptv', playlistCategory: 'sports', sport: 'baseball', terms: ['baseball', 'mlb'] },
+      { id: 'hockey', label: 'Hockey', source: 'iptv', playlistCategory: 'sports', sport: 'hockey', terms: ['hockey', 'nhl'] },
+      { id: 'soccer', label: 'Soccer', source: 'iptv', playlistCategory: 'sports', sport: 'soccer', terms: ['soccer', 'football', 'futbol', 'fútbol', 'premier league', 'uefa', 'fifa', 'la liga'] },
+      { id: 'combat', label: 'Combat Sports', source: 'iptv', playlistCategory: 'sports', sport: 'combat', terms: ['boxing', 'mma', 'ufc', 'wrestling', 'fight'] },
+      { id: 'motorsports', label: 'Motorsports', source: 'iptv', playlistCategory: 'sports', sport: 'motorsports', terms: ['motor', 'racing', 'formula', 'nascar', 'auto sport'] },
       { id: 'tennis-golf', label: 'Tennis & Golf', source: 'iptv', playlistCategory: 'sports', terms: ['tennis', 'golf', 'pga', 'atp', 'wta'] }
     ],
     'Live TV': [
@@ -112,6 +113,7 @@
   }
 
   function parseM3u(text, options) {
+    if (liveTvApi && typeof liveTvApi.parseM3u === 'function') return liveTvApi.parseM3u(text, options);
     var settings = options || {};
     var lines = String(text || '').replace(/\r/g, '').split('\n');
     var entries = [];
@@ -197,9 +199,22 @@
   }
 
   function loadLiveChannels(section, filterId, limit) {
+    return loadLiveDirectory(section, filterId, typeof limit === 'object' ? limit : { limit: limit }).then(function (directory) {
+      return directory.channels;
+    });
+  }
+
+  function loadLiveDirectory(section, filterId, options) {
     var filter = getFilter(section, filterId);
-    if (!filter || filter.source !== 'iptv') return Promise.resolve([]);
+    if (!filter || filter.source !== 'iptv') return Promise.resolve({ channels: [], facets: { countries: [], languages: [], sports: [] }, total: 0, cached: false });
     var url = IPTV_BASE + filter.playlistCategory + '.m3u';
+    if (liveTvApi && typeof liveTvApi.loadDirectory === 'function') {
+      return liveTvApi.loadDirectory(url, Object.assign({}, options || {}, {
+        playlistCategory: filter.playlistCategory,
+        sport: filter.sport || '',
+        terms: filter.terms || []
+      }));
+    }
     return requestText(url).then(function (text) {
       var entries = parseM3u(text, { category: filter.label });
       if (filter.terms && filter.terms.length) {
@@ -211,8 +226,26 @@
       entries.sort(function (left, right) {
         return Number(Boolean(right.logo)) - Number(Boolean(left.logo)) || left.name.localeCompare(right.name);
       });
-      return entries.slice(0, limit || 60);
+      return {
+        channels: entries.slice(0, Number(options && options.limit) || 60),
+        facets: { countries: [], languages: [], sports: [] },
+        total: entries.length,
+        cached: false
+      };
     });
+  }
+
+  function loadLiveGuide(channelId, feedId, options) {
+    if (!liveTvApi || typeof liveTvApi.loadGuide !== 'function') return Promise.resolve({ status: 'unavailable', programmes: [] });
+    return liveTvApi.loadGuide(channelId, feedId, options);
+  }
+
+  function markLiveStreamFailure(url, storage) {
+    if (liveTvApi && typeof liveTvApi.markStreamFailure === 'function') liveTvApi.markStreamFailure(url, storage);
+  }
+
+  function markLiveStreamSuccess(url, storage) {
+    if (liveTvApi && typeof liveTvApi.markStreamSuccess === 'function') liveTvApi.markStreamSuccess(url, storage);
   }
 
   return {
@@ -223,6 +256,10 @@
     buildTmdbRequest: buildTmdbRequest,
     matchesLocalFilter: matchesLocalFilter,
     parseM3u: parseM3u,
-    loadLiveChannels: loadLiveChannels
+    loadLiveChannels: loadLiveChannels,
+    loadLiveDirectory: loadLiveDirectory,
+    loadLiveGuide: loadLiveGuide,
+    markLiveStreamFailure: markLiveStreamFailure,
+    markLiveStreamSuccess: markLiveStreamSuccess
   };
 }));

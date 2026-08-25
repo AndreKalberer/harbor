@@ -10,12 +10,15 @@ import android.view.WindowManager;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
+
+import androidx.webkit.WebViewAssetLoader;
+import androidx.webkit.WebViewClientCompat;
 
 public class MainActivity extends Activity {
-  private static final String HARBOR_URL = "file:///android_asset/index.html";
+  private static final String HARBOR_URL = "https://appassets.androidplatform.net/assets/index.html";
   private WebView webView;
 
   @Override
@@ -33,7 +36,7 @@ public class MainActivity extends Activity {
     settings.setJavaScriptEnabled(true);
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(false);
-    settings.setAllowFileAccess(true);
+    settings.setAllowFileAccess(false);
     settings.setAllowFileAccessFromFileURLs(false);
     settings.setAllowUniversalAccessFromFileURLs(false);
     settings.setAllowContentAccess(false);
@@ -41,12 +44,22 @@ public class MainActivity extends Activity {
     settings.setSupportMultipleWindows(false);
     settings.setUserAgentString(settings.getUserAgentString() + " HarborTV/" + BuildConfig.VERSION_NAME);
 
-    webView.setWebViewClient(new WebViewClient() {
+    WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
+      .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+      .build();
+
+    webView.setWebViewClient(new WebViewClientCompat() {
+      @Override
+      public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+        return assetLoader.shouldInterceptRequest(request.getUrl());
+      }
+
       @Override
       public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
         if (!request.isForMainFrame()) return false;
         String scheme = request.getUrl().getScheme();
-        return !("file".equalsIgnoreCase(scheme) || "about".equalsIgnoreCase(scheme));
+        return !("https".equalsIgnoreCase(scheme) && "appassets.androidplatform.net".equalsIgnoreCase(request.getUrl().getHost()))
+          && !"about".equalsIgnoreCase(scheme);
       }
     });
     webView.setWebChromeClient(new WebChromeClient() {

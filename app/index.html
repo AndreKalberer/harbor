@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: harbor-artwork:; connect-src 'self' https:; media-src 'self' blob: https:; frame-src data: https:; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: harbor-artwork:; connect-src 'self' https:; media-src 'self' blob: https:; frame-src data: https://vidlink.pro https://vidsrc.to https://autoembed.to https://multiembed.mov; object-src 'none'; base-uri 'none'; form-action 'none'" />
     <title>Harbor</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -68,6 +68,12 @@
         <div class="browse-shell">
           <nav id="category-list" class="category-list" aria-label="Browse categories"></nav>
           <nav id="watch-filter-list" class="watch-filter-list" aria-label="Browse the selected Watch category" hidden></nav>
+          <section id="live-directory-controls" class="live-directory-controls" aria-label="Refine public live channels" hidden>
+            <div class="live-directory-heading"><span class="dialog-kicker">IPTV-org public channels</span><strong>Refine the live directory</strong></div>
+            <label>Country<select id="live-country-select"><option value="">All countries</option></select></label>
+            <label>Language<select id="live-language-select"><option value="">All languages</option></select></label>
+            <p id="live-directory-status" role="status" aria-live="polite"></p>
+          </section>
 
           <section class="directory" aria-label="Browse Harbor">
             <div id="resource-list" class="resource-list"></div>
@@ -82,7 +88,7 @@
 
           <footer class="page-footer">
             <span id="catalog-count">Loading Harbor…</span>
-            <span id="app-version">Harbor 2.1.0</span>
+            <span id="app-version">Harbor 2.2.0</span>
           </footer>
         </div>
       </main>
@@ -121,6 +127,11 @@
 
       <div class="detail-dialog-body">
         <p id="detail-overview" class="detail-overview"></p>
+        <section id="detail-live-guide" class="detail-live-guide" aria-labelledby="detail-guide-title" hidden>
+          <div class="detail-guide-heading"><span class="dialog-kicker">Live guide</span><h3 id="detail-guide-title">On now and next</h3></div>
+          <p id="detail-guide-status" role="status" aria-live="polite">Checking programme data…</p>
+          <ol id="detail-guide-list" class="detail-guide-list"></ol>
+        </section>
         <div id="detail-episodes-wrap" class="detail-episodes-wrap" hidden>
           <div class="episodes-select-row">
             <label for="detail-season-select">Season</label>
@@ -129,6 +140,7 @@
           <div id="detail-episodes-list" class="detail-episodes-list"></div>
         </div>
         <div class="detail-actions-row">
+          <button id="detail-play-btn" class="button-primary" type="button" hidden>▶ Watch live</button>
           <button id="detail-save-btn" class="button-secondary" type="button">＋ My List</button>
         </div>
       </div>
@@ -313,6 +325,7 @@
 
     <script src="../shared/series-metadata.js"></script>
     <script src="../shared/search-ranking.js"></script>
+    <script src="../shared/live-tv.js"></script>
     <script src="../shared/watch-browse.js"></script>
     <script src="../shared/playback-providers.js"></script>
     <script src="../shared/user-state.js"></script>

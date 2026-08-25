@@ -43,7 +43,7 @@
     ] }
   };
 
-  var state = { section: 'Watch', subcategory: 'All', watchFilter: '', page: 1, items: [], active: null, saved: [], history: [], query: '', canLoadMore: false, loading: false, seasons: [], season: 1, episode: 1, episodePage: 0, playerRoutes: [], playerRouteIndex: 0, playerMode: '' };
+  var state = { section: 'Watch', subcategory: 'All', watchFilter: '', liveCountry: '', liveLanguage: '', liveFacets: { countries: [], languages: [], sports: [] }, liveTotal: 0, liveCached: false, page: 1, items: [], active: null, saved: [], history: [], query: '', canLoadMore: false, loading: false, seasons: [], season: 1, episode: 1, episodePage: 0, playerRoutes: [], playerRouteIndex: 0, playerMode: '' };
   var seriesMetadataCache = {};
   var itemLoadGeneration = 0;
   var playerReady = false;
@@ -52,6 +52,10 @@
   var playerReadyTimer = null;
   var playerControlTimer = null;
   var playerHls = null;
+  var liveStreamCandidates = [];
+  var liveStreamIndex = 0;
+  var liveStreamRecoveryAttempts = 0;
+  var liveGuideGeneration = 0;
   var focusBeforeOverlay = null;
   try {
     var stored = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
@@ -67,6 +71,11 @@
   var heroSave = document.getElementById('hero-save');
   var subcategoryRow = document.getElementById('subcategory-row');
   var watchFilterRow = document.getElementById('watch-filter-row');
+  var liveFilterRow = document.getElementById('live-filter-row');
+  var liveCountrySelect = document.getElementById('live-country-select');
+  var liveLanguageSelect = document.getElementById('live-language-select');
+  var liveFilterDone = document.getElementById('live-filter-done');
+  var liveDirectoryStatus = document.getElementById('live-directory-status');
   var cardGrid = document.getElementById('card-grid');
   var rowKicker = document.getElementById('row-kicker');
   var rowTitle = document.getElementById('row-title');
@@ -82,6 +91,9 @@
   var detailKicker = document.getElementById('detail-kicker');
   var detailMeta = document.getElementById('detail-meta');
   var detailSummary = document.getElementById('detail-summary');
+  var detailLiveGuide = document.getElementById('detail-live-guide');
+  var detailGuideStatus = document.getElementById('detail-guide-status');
+  var detailGuideList = document.getElementById('detail-guide-list');
   var detailPlay = document.getElementById('detail-play');
   var detailSave = document.getElementById('detail-save');
   var episodeBrowser = document.getElementById('episode-browser');
@@ -109,7 +121,7 @@
   }
 
   function snapshot(item, resume) {
-    var saved = { id: item.id, tmdbId: item.tmdbId || '', name: item.name, category: item.category, type: item.type, section: item.section || '', tags: item.tags || [], meta: item.meta || '', summary: item.summary || '', image: item.image || '', url: item.url || '', preview: item.preview || '', directStream: item.directStream || '' };
+    var saved = { id: item.id, tmdbId: item.tmdbId || '', name: item.name, category: item.category, type: item.type, section: item.section || '', tags: item.tags || [], meta: item.meta || '', summary: item.summary || '', image: item.image || '', url: item.url || '', preview: item.preview || '', directStream: item.directStream || '', channelId: item.channelId || '', feedId: item.feedId || '', countryCode: item.countryCode || '', countryName: item.countryName || '', countryFlag: item.countryFlag || '', languageCodes: item.languageCodes || [], languageNames: item.languageNames || [], liveCategories: item.liveCategories || [], sports: item.sports || [], streamCandidates: (item.streamCandidates || []).slice(0, 4) };
     if (resume) saved.resume = { season: resume.season, episode: resume.episode };
     else if (item.resume) saved.resume = { season: item.resume.season, episode: item.resume.episode };
     return saved;
@@ -223,10 +235,7 @@
   }
 
   function liveItemId(entry, index) {
-    var source = String(entry.url || entry.name || index);
-    var hash = 0;
-    for (var cursor = 0; cursor < source.length; cursor++) hash = ((hash << 5) - hash + source.charCodeAt(cursor)) | 0;
-    return 'iptv-' + String(entry.id || entry.name || 'channel').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + Math.abs(hash);
+    return 'iptv-' + String(entry.id || entry.channelId || entry.name || index).replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
   }
 
   function normalizeLiveChannel(entry, index, filter) {
@@ -236,11 +245,21 @@
       category: 'Watch',
       type: 'live',
       section: state.subcategory,
-      tags: [filter.label || entry.group || state.subcategory],
-      meta: 'Live · ' + (filter.label || state.subcategory),
-      summary: 'A publicly available live channel from the IPTV-org catalog. Availability can vary by region and broadcaster.',
+      tags: [filter.label || entry.group || state.subcategory].concat(entry.groups || []).concat(entry.languageNames || []),
+      meta: ['Live', entry.countryFlag, entry.countryName, (entry.languageNames || []).join(', '), entry.streams && entry.streams[0] && entry.streams[0].quality].filter(Boolean).join(' · '),
+      summary: ['A public live channel from the IPTV-org catalog, played directly inside Harbor.', entry.countryName || '', (entry.languageNames || []).join(', ')].filter(Boolean).join(' · '),
       image: entry.logo || '',
-      directStream: entry.url
+      directStream: entry.url,
+      channelId: entry.channelId || '',
+      feedId: entry.feedId || '',
+      countryCode: entry.countryCode || '',
+      countryName: entry.countryName || '',
+      countryFlag: entry.countryFlag || '',
+      languageCodes: entry.languageCodes || [],
+      languageNames: entry.languageNames || [],
+      liveCategories: entry.categories || [],
+      sports: entry.sports || [],
+      streamCandidates: (entry.streams || []).map(function (stream) { return Object.assign({}, stream); })
     };
   }
 
@@ -282,9 +301,18 @@
   function fetchWatch(query, page) {
     if (state.subcategory === 'Sports' || state.subcategory === 'Live TV') {
       var liveFilter = watchBrowseApi.getFilter(state.subcategory, state.watchFilter);
-      return watchBrowseApi.loadLiveChannels(state.subcategory, state.watchFilter, 80).then(function (entries) {
-        return entries.map(function (entry, index) { return normalizeLiveChannel(entry, index, liveFilter); })
-          .filter(function (item) { return itemMatchesQuery(item, query); });
+      return watchBrowseApi.loadLiveDirectory(state.subcategory, state.watchFilter, {
+        limit: 240,
+        country: state.liveCountry,
+        language: state.liveLanguage,
+        query: query,
+        platform: window.tizen ? 'tizen' : '',
+        storage: localStorage
+      }).then(function (directory) {
+        state.liveFacets = directory.facets || { countries: [], languages: [], sports: [] };
+        state.liveTotal = Number(directory.total) || directory.channels.length;
+        state.liveCached = Boolean(directory.cached);
+        return directory.channels.map(function (entry, index) { return normalizeLiveChannel(entry, index, liveFilter); });
       });
     }
     if (!TMDB_KEY) {
@@ -379,6 +407,13 @@
       button.setAttribute('aria-pressed', String(name === state.subcategory));
       button.textContent = name;
       button.addEventListener('click', function () {
+        if (state.subcategory !== name) {
+          state.liveCountry = '';
+          state.liveLanguage = '';
+          state.liveFacets = { countries: [], languages: [], sports: [] };
+          state.liveTotal = 0;
+          state.liveCached = false;
+        }
         state.subcategory = name;
         state.watchFilter = state.section === 'Watch' && name !== 'All' ? watchBrowseApi.defaultFilterId(name) : '';
         state.query = ''; state.page = 1;
@@ -415,6 +450,30 @@
       });
       watchFilterRow.appendChild(button);
     });
+    renderLiveFilters();
+  }
+
+  function replaceLiveOptions(select, label, entries, selected) {
+    select.innerHTML = '';
+    var all = document.createElement('option'); all.value = ''; all.textContent = label; select.appendChild(all);
+    entries.forEach(function (entry) {
+      var option = document.createElement('option');
+      option.value = entry.code || '';
+      option.textContent = [entry.flag || '', entry.name || entry.code].filter(Boolean).join(' ');
+      select.appendChild(option);
+    });
+    select.value = selected;
+  }
+
+  function renderLiveFilters() {
+    var visible = state.section === 'Watch' && (state.subcategory === 'Sports' || state.subcategory === 'Live TV');
+    liveFilterRow.hidden = !visible;
+    if (!visible) return;
+    replaceLiveOptions(liveCountrySelect, 'All countries', state.liveFacets.countries || [], state.liveCountry);
+    replaceLiveOptions(liveLanguageSelect, 'All languages', state.liveFacets.languages || [], state.liveLanguage);
+    liveDirectoryStatus.textContent = state.loading
+      ? 'Checking IPTV-org and Harbor stream health…'
+      : Math.max(state.liveTotal, state.items.length) + ' compatible channels' + (state.liveCached ? ' · cached directory' : ' · unsafe and unsupported streams removed');
   }
 
   function renderHero() {
@@ -468,7 +527,11 @@
       cardGrid.appendChild(card);
     });
     if (!state.items.length) cardGrid.innerHTML = '<div class="empty-state"><h3>No titles found</h3><p>Try a different search or category.</p></div>';
-    resultCount.textContent = state.items.length + (state.items.length === 1 ? ' title' : ' titles');
+    var isLive = state.subcategory === 'Sports' || state.subcategory === 'Live TV';
+    resultCount.textContent = isLive
+      ? state.items.length + ' of ' + Math.max(state.liveTotal, state.items.length) + ' compatible channels'
+      : state.items.length + (state.items.length === 1 ? ' title' : ' titles');
+    renderLiveFilters();
     moreButton.hidden = !state.canLoadMore;
   }
 
@@ -498,7 +561,7 @@
 
   function setSection(section) {
     state.section = section;
-    state.subcategory = 'All'; state.watchFilter = ''; state.query = ''; state.page = 1;
+    state.subcategory = 'All'; state.watchFilter = ''; state.liveCountry = ''; state.liveLanguage = ''; state.liveFacets = { countries: [], languages: [], sports: [] }; state.liveTotal = 0; state.liveCached = false; state.query = ''; state.page = 1;
     document.querySelectorAll('[data-section]').forEach(function (button) {
       var active = button.getAttribute('data-section') === section;
       button.classList.toggle('active', active);
@@ -590,6 +653,33 @@
     episodeNext.hidden = state.episodePage >= pageCount - 1;
   }
 
+  function formatGuideClock(value) {
+    return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(value));
+  }
+
+  function loadLiveGuide(item) {
+    var generation = ++liveGuideGeneration;
+    detailGuideList.innerHTML = '';
+    detailGuideStatus.textContent = 'Checking IPTV-org programme sources…';
+    watchBrowseApi.loadLiveGuide(item.channelId, item.feedId, { limit: 5 }).then(function (guide) {
+      if (generation !== liveGuideGeneration || !state.active || state.active.id !== item.id || detailPanel.hidden) return;
+      if (!guide.programmes || !guide.programmes.length) {
+        detailGuideStatus.textContent = 'A current schedule is not published for this channel. Live playback is still available.';
+        return;
+      }
+      detailGuideStatus.textContent = [guide.provider ? 'Listings from ' + guide.provider : '', guide.language ? guide.language.toUpperCase() : ''].filter(Boolean).join(' · ');
+      guide.programmes.forEach(function (programme) {
+        var row = document.createElement('li');
+        if (programme.current) row.className = 'current';
+        var time = document.createElement('time'); time.dateTime = programme.start; time.textContent = formatGuideClock(programme.start) + '–' + formatGuideClock(programme.stop);
+        var copy = document.createElement('div');
+        var title = document.createElement('strong'); title.textContent = programme.title; copy.appendChild(title);
+        if (programme.description) { var summary = document.createElement('p'); summary.textContent = programme.description; copy.appendChild(summary); }
+        row.appendChild(time); row.appendChild(copy); detailGuideList.appendChild(row);
+      });
+    });
+  }
+
   function openDetail(item) {
     focusBeforeOverlay = document.activeElement;
     state.active = item;
@@ -603,7 +693,10 @@
     detailSummary.textContent = item.summary || 'Open this title in Harbor.';
     updateSaveButtons();
     var isSeries = item.type === 'tv' || item.type === 'anime';
+    var isLive = item.type === 'live';
     episodeBrowser.hidden = !isSeries;
+    detailLiveGuide.hidden = !isLive;
+    if (isLive) loadLiveGuide(item); else liveGuideGeneration += 1;
     detailPlay.hidden = isSeries;
     detailPlay.disabled = isSeries;
     if (isSeries) {
@@ -690,6 +783,9 @@
     clearTimeout(playerRouteTimer);
     clearTimeout(playerReadyTimer);
     clearTimeout(playerControlTimer);
+    if (state.active && state.active.type === 'live' && liveStreamCandidates[liveStreamIndex] && liveStreamCandidates[liveStreamIndex].url) {
+      watchBrowseApi.markLiveStreamSuccess(liveStreamCandidates[liveStreamIndex].url, localStorage);
+    }
     playerReadyTimer = setTimeout(function () {
       playerStatus.hidden = true;
       if (state.playerMode === 'video' && !tvVideo.hidden) tvVideo.focus();
@@ -725,6 +821,55 @@
     playerHls = null;
   }
 
+  function currentLiveStream() {
+    return liveStreamCandidates[liveStreamIndex] || null;
+  }
+
+  function tryNextLiveStream() {
+    clearTimeout(playerRouteTimer);
+    var failed = currentLiveStream();
+    if (failed && failed.url) watchBrowseApi.markLiveStreamFailure(failed.url, localStorage);
+    liveStreamIndex += 1;
+    liveStreamRecoveryAttempts = 0;
+    if (liveStreamIndex >= liveStreamCandidates.length) {
+      showPlayerStatus('Unable to play right now', 'Harbor tried every compatible stream published for this channel. Try again later or choose another channel.', true);
+      playerRetry.focus();
+      return;
+    }
+    showPlayerStatus(state.active.name, 'That feed did not respond. Trying another public stream…', false);
+    setTimeout(loadLivePlayerStream, 180);
+  }
+
+  function loadLivePlayerStream() {
+    var stream = currentLiveStream();
+    if (!stream || !stream.url) { tryNextLiveStream(); return; }
+    clearTimeout(playerRouteTimer);
+    destroyPlayerHls();
+    playerReady = false;
+    tvVideo.pause();
+    tvVideo.removeAttribute('src');
+    tvVideo.hidden = false;
+    showPlayerStatus(state.active.name, 'Connecting to the public live feed…', false);
+    if (/\.m3u8(?:$|[?#])/i.test(stream.url) && window.Hls && window.Hls.isSupported()) {
+      playerHls = new window.Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 60 });
+      playerHls.attachMedia(tvVideo);
+      playerHls.on(window.Hls.Events.MEDIA_ATTACHED, function () { if (playerHls) playerHls.loadSource(stream.url); });
+      playerHls.on(window.Hls.Events.MANIFEST_PARSED, function () { tvVideo.play().catch(function () {}); });
+      playerHls.on(window.Hls.Events.ERROR, function (_event, data) {
+        if (!data || !data.fatal) return;
+        if (liveStreamRecoveryAttempts < 1 && data.type === window.Hls.ErrorTypes.NETWORK_ERROR && playerHls) {
+          liveStreamRecoveryAttempts += 1; playerHls.startLoad();
+        } else if (liveStreamRecoveryAttempts < 1 && data.type === window.Hls.ErrorTypes.MEDIA_ERROR && playerHls) {
+          liveStreamRecoveryAttempts += 1; playerHls.recoverMediaError();
+        } else tryNextLiveStream();
+      });
+    } else {
+      tvVideo.src = stream.url;
+      tvVideo.play().catch(function () {});
+    }
+    playerRouteTimer = setTimeout(tryNextLiveStream, 15000);
+  }
+
   function resetPlayer() {
     clearTimeout(playerRouteTimer);
     clearTimeout(playerReadyTimer);
@@ -732,6 +877,9 @@
     state.playerRoutes = [];
     state.playerRouteIndex = 0;
     state.playerMode = '';
+    liveStreamCandidates = [];
+    liveStreamIndex = 0;
+    liveStreamRecoveryAttempts = 0;
     playerReady = false;
     destroyPlayerHls();
     tvFrame.hidden = true; tvFrame.src = 'about:blank';
@@ -750,23 +898,12 @@
     setTimeout(function () { playerBack.focus(); }, 0);
     if (item.directStream) {
       state.playerMode = 'video';
-      tvVideo.hidden = false;
-      if (/\.m3u8(?:$|[?#])/i.test(item.directStream) && window.Hls && window.Hls.isSupported()) {
-        playerHls = new window.Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 60 });
-        playerHls.attachMedia(tvVideo);
-        playerHls.on(window.Hls.Events.MEDIA_ATTACHED, function () { if (playerHls) playerHls.loadSource(item.directStream); });
-        playerHls.on(window.Hls.Events.MANIFEST_PARSED, function () { tvVideo.play().catch(function () {}); });
-        playerHls.on(window.Hls.Events.ERROR, function (_event, data) {
-          if (!data || !data.fatal) return;
-          if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR && playerHls) playerHls.startLoad();
-          else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR && playerHls) playerHls.recoverMediaError();
-          else showPlayerStatus('Unable to play right now', 'This live channel is not responding. Try another channel.', true);
-        });
-      } else {
-        tvVideo.src = item.directStream;
-        tvVideo.play().catch(function () {});
-      }
-      playerRouteTimer = setTimeout(function () { showPlayerStatus('Unable to play right now', 'The live channel did not respond.', true); }, 12000);
+      liveStreamCandidates = item.type === 'live' && item.streamCandidates && item.streamCandidates.length
+        ? item.streamCandidates.slice(0, 4)
+        : [{ url: item.directStream, type: /\.m3u8(?:$|[?#])/i.test(item.directStream) ? 'hls' : 'video', quality: '', label: '' }];
+      liveStreamIndex = 0;
+      liveStreamRecoveryAttempts = 0;
+      loadLivePlayerStream();
       return;
     }
     if (item.preview) {
@@ -784,7 +921,7 @@
 
   function closeLayer(name) {
     if (name === 'search') searchPanel.hidden = true;
-    if (name === 'detail') detailPanel.hidden = true;
+    if (name === 'detail') { liveGuideGeneration += 1; detailPanel.hidden = true; }
     if (name === 'player') {
       resetPlayer(); playerPanel.hidden = true;
       if (state.active) {
@@ -857,8 +994,10 @@
     if (direction === 'down' && (current.closest('.tv-header-actions') || current.closest('.tv-nav') || current.classList.contains('tv-brand'))) return heroPlay.hidden ? subcategoryRow.querySelector('.focusable') : heroPlay;
     if (direction === 'down' && current.closest('.hero-actions')) return subcategoryRow.querySelector('.focusable');
     if (direction === 'down' && current.parentElement === subcategoryRow) return watchFilterRow.hidden ? cardGrid.querySelector('.media-card') : watchFilterRow.querySelector('.active') || watchFilterRow.querySelector('.focusable');
-    if (direction === 'down' && current.parentElement === watchFilterRow) return cardGrid.querySelector('.media-card');
-    if (direction === 'up' && current.classList.contains('media-card')) return watchFilterRow.hidden ? subcategoryRow.querySelector('.active') || subcategoryRow.querySelector('.focusable') : watchFilterRow.querySelector('.active') || watchFilterRow.querySelector('.focusable');
+    if (direction === 'down' && current.parentElement === watchFilterRow) return liveFilterRow.hidden ? cardGrid.querySelector('.media-card') : liveCountrySelect;
+    if (direction === 'down' && current === liveFilterDone) return cardGrid.querySelector('.media-card');
+    if (direction === 'up' && current.classList.contains('media-card')) return !liveFilterRow.hidden ? liveFilterDone : watchFilterRow.hidden ? subcategoryRow.querySelector('.active') || subcategoryRow.querySelector('.focusable') : watchFilterRow.querySelector('.active') || watchFilterRow.querySelector('.focusable');
+    if (direction === 'up' && current.closest('.live-filter-row')) return watchFilterRow.querySelector('.active') || watchFilterRow.querySelector('.focusable');
     if (direction === 'up' && current.parentElement === watchFilterRow) return subcategoryRow.querySelector('.active') || subcategoryRow.querySelector('.focusable');
     if (direction === 'up' && current.parentElement === subcategoryRow) return heroPlay.hidden ? document.querySelector('[data-action="watch"]') : heroPlay;
     return null;
@@ -902,7 +1041,10 @@
   document.querySelectorAll('[data-section]').forEach(function (button) { button.addEventListener('click', function () { setSection(button.getAttribute('data-section')); }); });
   document.querySelector('[data-action="watch"]').addEventListener('click', function (event) { event.preventDefault(); setSection('Watch'); });
   document.getElementById('search-button').addEventListener('click', function () { focusBeforeOverlay = document.activeElement; searchPanel.hidden = false; syncOverlayAccessibility(); searchInput.value = state.query; searchInput.placeholder = 'Search ' + (state.subcategory === 'All' ? state.section : state.subcategory); setTimeout(function () { searchInput.focus(); searchInput.select(); }, 0); });
-  document.getElementById('list-button').addEventListener('click', function () { state.section = 'Home'; state.subcategory = 'My List'; state.watchFilter = ''; state.query = ''; state.page = 1; loadItems(false); });
+  document.getElementById('list-button').addEventListener('click', function () { state.section = 'Home'; state.subcategory = 'My List'; state.watchFilter = ''; state.liveCountry = ''; state.liveLanguage = ''; state.query = ''; state.page = 1; loadItems(false); });
+  liveCountrySelect.addEventListener('change', function () { state.liveCountry = liveCountrySelect.value; state.page = 1; loadItems(false).then(function () { liveCountrySelect.focus(); }); });
+  liveLanguageSelect.addEventListener('change', function () { state.liveLanguage = liveLanguageSelect.value; state.page = 1; loadItems(false).then(function () { liveLanguageSelect.focus(); }); });
+  liveFilterDone.addEventListener('click', function () { var card = cardGrid.querySelector('.media-card'); if (card) { card.focus(); revealFocused(card); } });
   searchForm.addEventListener('submit', function (event) {
     event.preventDefault(); state.query = searchInput.value.trim(); state.page = 1; searchPanel.hidden = true; syncOverlayAccessibility();
     loadItems(false).then(function () {
@@ -918,7 +1060,12 @@
   heroSave.addEventListener('click', function () { toggleSaved(state.active); });
   detailSave.addEventListener('click', function () { toggleSaved(state.active); });
   moreButton.addEventListener('click', function () { if (state.loading) return; state.page += 1; loadItems(true); });
-  playerRetry.addEventListener('click', function () { state.playerRouteIndex = 0; if (state.playerRoutes.length) loadPlayerRoute(); else openPlayer(state.active); });
+  playerRetry.addEventListener('click', function () {
+    if (state.active && state.active.type === 'live' && liveStreamCandidates.length) {
+      liveStreamIndex = 0; liveStreamRecoveryAttempts = 0; loadLivePlayerStream(); return;
+    }
+    state.playerRouteIndex = 0; if (state.playerRoutes.length) loadPlayerRoute(); else openPlayer(state.active);
+  });
   document.querySelectorAll('[data-close]').forEach(function (button) { button.addEventListener('click', function () { closeLayer(button.getAttribute('data-close')); }); });
   tvFrame.addEventListener('load', function () {
     if (playerPanel.hidden || tvFrame.src === 'about:blank') return;
@@ -947,7 +1094,7 @@
   });
   tvVideo.addEventListener('canplay', function () { markPlayerReady(); });
   tvAudio.addEventListener('canplay', function () { markPlayerReady(); });
-  tvVideo.addEventListener('error', function () { showPlayerStatus('Unable to play right now', 'The live channel could not be played.', true); });
+  tvVideo.addEventListener('error', function () { if (state.active && state.active.type === 'live') tryNextLiveStream(); else showPlayerStatus('Unable to play right now', 'The live channel could not be played.', true); });
   tvAudio.addEventListener('error', function () { showPlayerStatus('Unable to play right now', 'This preview could not be played.', true); });
 
   document.addEventListener('focusin', function (event) {
@@ -971,8 +1118,8 @@
       return;
     }
     var editingSearch = document.activeElement === searchInput && direction === 'left';
-    var editingSeason = document.activeElement === seasonSelect && (direction === 'up' || direction === 'down');
-    if (direction && !editingSearch && !editingSeason) {
+    var editingSelect = [seasonSelect, liveCountrySelect, liveLanguageSelect].indexOf(document.activeElement) >= 0 && (direction === 'up' || direction === 'down');
+    if (direction && !editingSearch && !editingSelect) {
       event.preventDefault();
       event.stopPropagation();
       moveFocus(direction);

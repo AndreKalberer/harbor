@@ -40,6 +40,32 @@
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
+  function stringList(value, limit, itemLimit) {
+    return Array.isArray(value)
+      ? value.filter(function (entry) { return typeof entry === 'string'; }).slice(0, limit).map(function (entry) { return entry.slice(0, itemLimit); })
+      : [];
+  }
+
+  function streamList(value) {
+    return Array.isArray(value) ? value.reduce(function (streams, entry) {
+      if (streams.length >= 4 || !entry || typeof entry !== 'object') return streams;
+      var url = text(entry.url, 4000);
+      if (url.indexOf('https://') !== 0 || !/\.(?:m3u8|mp4|m4v|webm)(?:$|[?#])/i.test(url)) return streams;
+      streams.push({
+        url: url,
+        type: text(entry.type, 20),
+        quality: text(entry.quality, 30),
+        label: text(entry.label, 100)
+      });
+      return streams;
+    }, []) : [];
+  }
+
+  function safeStream(value) {
+    var url = text(value, 4000);
+    return url.indexOf('https://') === 0 && /\.(?:m3u8|mp4|m4v|webm)(?:$|[?#])/i.test(url) ? url : '';
+  }
+
   function mediaKey(item) {
     return String(item.id || [item.category, item.type, item.name].join(':'));
   }
@@ -56,13 +82,21 @@
       rating: typeof value.rating === 'string' || typeof value.rating === 'number'
         ? text(String(value.rating), 30)
         : '',
-      sections: Array.isArray(value.sections)
-        ? value.sections.filter(function (entry) { return typeof entry === 'string'; }).slice(0, 20).map(function (entry) { return entry.slice(0, 100); })
-        : [],
+      sections: stringList(value.sections, 20, 100),
       overview: text(value.overview, 5000),
       artworkUrl: text(value.artworkUrl, 4000),
       audioUrl: text(value.audioUrl, 4000),
-      directStream: text(value.directStream, 4000)
+      directStream: safeStream(value.directStream),
+      channelId: text(value.channelId, 300),
+      feedId: text(value.feedId, 200),
+      countryCode: text(value.countryCode, 10),
+      countryName: text(value.countryName, 120),
+      countryFlag: text(value.countryFlag, 20),
+      languageCodes: stringList(value.languageCodes, 12, 20),
+      languageNames: stringList(value.languageNames, 12, 100),
+      liveCategories: stringList(value.liveCategories, 20, 100),
+      sports: stringList(value.sports, 20, 100),
+      streamCandidates: streamList(value.streamCandidates)
     };
     if (Number.isFinite(Number(value.lastOpenedAt))) item.lastOpenedAt = Number(value.lastOpenedAt);
     return item;

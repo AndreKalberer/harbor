@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://harbor.app/tv" version="2.1.0" viewmodes="maximized">
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://harbor.app/tv" version="2.2.0" viewmodes="maximized">
   <tizen:application id="HbrTV2026A.HarborTV" package="HbrTV2026A" required_version="3.0" />
   <content src="index.html" />
   <feature name="http://tizen.org/feature/screen.size.all" />
@@ -7,6 +7,7 @@
   <name>Harbor</name>
   <access origin="https://andrekalberer.github.io" subdomains="false" />
   <access origin="https://iptv-org.github.io" subdomains="false" />
+  <access origin="https://worker-9dd4.onrender.com" subdomains="false" />
   <access origin="https://api.themoviedb.org" subdomains="false" />
   <access origin="https://image.tmdb.org" subdomains="false" />
   <access origin="https://itunes.apple.com" subdomains="false" />
@@ -15,6 +16,35 @@
   <access origin="https://covers.openlibrary.org" subdomains="false" />
   <access origin="https://vidlink.pro" subdomains="false" />
   <access origin="https://commondatastorage.googleapis.com" subdomains="false" />
+  <access origin="https://liveeu-gcp.alkassdigital.net" subdomains="false" />
+  <access origin="https://a-cdn.klowdtv.com" subdomains="false" />
+  <access origin="https://streams2.sofast.tv" subdomains="false" />
+  <access origin="https://stream-us-east-1.getpublica.com" subdomains="false" />
+  <access origin="https://linear-253.frequency.stream" subdomains="false" />
+  <access origin="https://d36r8jifhgsk5j.cloudfront.net" subdomains="false" />
+  <access origin="https://mainstreammedia-worldoffreesportsintl-rakuten.amagi.tv" subdomains="false" />
+  <access origin="https://30a-tv.com" subdomains="false" />
+  <access origin="https://raycom-accdn-firetv.amagi.tv" subdomains="false" />
+  <access origin="https://webstream.multistream.it" subdomains="false" />
+  <access origin="https://africa24.vedge.infomaniak.com" subdomains="false" />
+  <access origin="https://kanal75xto-llhls.akamaized.net" subdomains="false" />
+  <access origin="https://mgv-awapa.akamaized.net" subdomains="false" />
+  <access origin="https://bein-xtra-bein.amagi.tv" subdomains="false" />
+  <access origin="https://cdn3.wowza.com" subdomains="false" />
+  <access origin="https://pb-wm04vonaerv0k.akamaized.net" subdomains="false" />
+  <access origin="https://dfr80qz435crc.cloudfront.net" subdomains="false" />
+  <access origin="https://proped3fhg87.airspace-cdn.cbsivideo.com" subdomains="false" />
+  <access origin="https://propee33f9c2.airspace-cdn.cbsivideo.com" subdomains="false" />
+  <access origin="https://na.linear.zype.com" subdomains="false" />
+  <access origin="https://d3b6q2ou5kp8ke.cloudfront.net" subdomains="false" />
+  <access origin="https://d3d85c7qkywguj.cloudfront.net" subdomains="false" />
+  <access origin="https://aegis-cloudfront-1.tubi.video" subdomains="false" />
+  <access origin="https://lotus.stingray.com" subdomains="false" />
+  <access origin="https://shd-gcp-live.edgenextcdn.net" subdomains="false" />
+  <access origin="https://d3qs3d2rkhfqrt.cloudfront.net" subdomains="false" />
+  <access origin="https://n18syndication.akamaized.net" subdomains="false" />
+  <access origin="https://cbcrclinear-tor.akamaized.net" subdomains="false" />
+  <access origin="https://cdn-uw2-prod.tsv2.amagi.tv" subdomains="false" />
   <access origin="https://www.xbox.com" subdomains="false" />
   <access origin="https://play.geforcenow.com" subdomains="false" />
   <access origin="https://luna.amazon.com" subdomains="false" />

@@ -4,6 +4,8 @@ Harbor is a cinematic entertainment hub for Windows, macOS, Linux, and TVs. Home
 
 Watch includes movies, television, anime, sports, and live TV. Listen includes music, soundtracks, radio, podcasts, and audiobooks. Read includes books, comics, manga, and light novels. Play browses games and can reopen installed titles without exposing their paths to the page.
 
+Sports and Live TV use IPTV-org's public playlists inside Harbor's native HLS/video player. Category and sport chips can be combined with country, language, and scoped search filters. Harbor rejects non-HTTPS, adult, blocked, header-dependent, duplicate, and unsupported stream formats; groups alternate feeds by channel; and temporarily quarantines feeds after repeated playback failures. Favorites remain on the device. Programme-guide listings appear when IPTV-org publishes a current XMLTV source for the selected channel; most channels currently show an honest schedule-unavailable state while remaining playable.
+
 ## Downloading
 
 The public download site is prepared for `https://andrekalberer.github.io/harbor/`. Tagged builds publish to `https://github.com/AndreKalberer/harbor/releases/latest` with SHA-256 checksums.
@@ -67,7 +69,7 @@ CI runs the isolated desktop smoke suite before Windows packaging, the packaged-
 
 ## TV clients
 
-The remote-first TV interface lives in `tv/`. Release packages bundle the interface locally for faster, more resilient startup; catalog artwork, search providers, and playback still require a network connection. It has large-screen layouts, D-pad navigation, scoped categories, My Harbor, and an in-app player that hands remote focus to the playback controls.
+The remote-first TV interface lives in `tv/`. Release packages bundle the interface locally for faster, more resilient startup; catalog artwork, search providers, and playback still require a network connection. It has large-screen layouts, D-pad navigation, scoped categories, live country/language filters, My Harbor, and an in-app player that hands remote focus to the playback controls. Samsung packages use an explicit CDN allowlist and automatically hide other unsupported IPTV feeds; Android uses the secure `appassets.androidplatform.net` origin for bundled assets and network catalogs.
 
 ```sh
 npm run tv:stage
