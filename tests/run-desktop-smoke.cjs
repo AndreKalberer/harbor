@@ -59,7 +59,27 @@ const stopProcess = async (child) => {
     new Promise((resolve) => child.once('exit', resolve)),
     delay(5_000)
   ]);
-  if (child.exitCode === null) child.kill('SIGKILL');
+  if (child.exitCode === null) {
+    child.kill('SIGKILL');
+    await Promise.race([
+      new Promise((resolve) => child.once('exit', resolve)),
+      delay(5_000)
+    ]);
+  }
+};
+
+const removeProfileDirectory = (profileDirectory) => {
+  try {
+    fs.rmSync(profileDirectory, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 200
+    });
+  } catch (error) {
+    if (!['EBUSY', 'ENOTEMPTY', 'EPERM'].includes(error.code)) throw error;
+    console.warn(`Harbor smoke profile cleanup deferred: ${error.code}`);
+  }
 };
 
 const runCommand = (command, args, options) => new Promise((resolve, reject) => {
@@ -125,7 +145,7 @@ const runSmoke = async (smokeName) => {
     });
   } finally {
     await stopProcess(harbor);
-    fs.rmSync(profileDirectory, { recursive: true, force: true });
+    removeProfileDirectory(profileDirectory);
   }
 };
 

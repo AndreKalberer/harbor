@@ -24,7 +24,24 @@ const stopProcess = async (child) => {
   if (child.exitCode !== null) return;
   child.kill();
   await Promise.race([new Promise((resolve) => child.once('exit', resolve)), delay(5000)]);
-  if (child.exitCode === null) child.kill('SIGKILL');
+  if (child.exitCode === null) {
+    child.kill('SIGKILL');
+    await Promise.race([new Promise((resolve) => child.once('exit', resolve)), delay(5000)]);
+  }
+};
+
+const removeProfileDirectory = (profileDirectory) => {
+  try {
+    fs.rmSync(profileDirectory, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 200
+    });
+  } catch (error) {
+    if (!['EBUSY', 'ENOTEMPTY', 'EPERM'].includes(error.code)) throw error;
+    console.warn(`Harbor TV smoke profile cleanup deferred: ${error.code}`);
+  }
 };
 
 const runCapture = (port) => new Promise((resolve, reject) => {
@@ -50,7 +67,10 @@ const run = async () => {
   const port = await reservePort();
   const profileDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-tv-smoke-'));
   const output = [];
-  const harbor = spawn(electronPath, [harnessPath, String(port)], {
+  const electronArgs = process.platform === 'linux' && process.env.CI
+    ? ['--no-sandbox', harnessPath, String(port)]
+    : [harnessPath, String(port)];
+  const harbor = spawn(electronPath, electronArgs, {
     cwd: projectRoot,
     env: { ...process.env, HARBOR_QA_PROFILE: profileDirectory },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -74,7 +94,7 @@ const run = async () => {
     await runCapture(port);
   } finally {
     await stopProcess(harbor);
-    fs.rmSync(profileDirectory, { recursive: true, force: true });
+    removeProfileDirectory(profileDirectory);
   }
 };
 
