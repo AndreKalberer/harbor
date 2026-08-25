@@ -2,10 +2,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const port = process.argv[2] || '9343';
+const isHarborTarget = (target) => target.type === 'page'
+  && (target.title === 'Harbor TV' || /\/tv\/index\.html(?:$|[?#])/i.test(target.url));
 
 const run = async () => {
   const targets = await fetch(`http://127.0.0.1:${port}/json`).then((response) => response.json());
-  const target = targets.find((item) => item.type === 'page' && item.title === 'Harbor TV');
+  const target = targets.find(isHarborTarget);
   if (!target) throw new Error('Harbor TV debug target was not found.');
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   let sequence = 0;

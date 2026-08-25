@@ -9,6 +9,8 @@ const electronPath = require('electron');
 const harnessPath = path.join(__dirname, 'tv-harness.cjs');
 const capturePath = path.join(__dirname, 'capture-tv.cjs');
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+const isHarborTarget = (target) => target.type === 'page'
+  && (target.title === 'Harbor TV' || /\/tv\/index\.html(?:$|[?#])/i.test(target.url));
 
 const reservePort = () => new Promise((resolve, reject) => {
   const server = net.createServer();
@@ -79,12 +81,12 @@ const run = async () => {
   harbor.stdout.on('data', (chunk) => output.push(chunk.toString()));
   harbor.stderr.on('data', (chunk) => output.push(chunk.toString()));
   try {
-    const deadline = Date.now() + 20000;
+    const deadline = Date.now() + (process.env.CI ? 45_000 : 20_000);
     while (Date.now() < deadline) {
       if (harbor.exitCode !== null) throw new Error(`Harbor TV exited before startup.\n${output.join('')}`);
       try {
         const targets = await fetch(`http://127.0.0.1:${port}/json`).then((response) => response.json());
-        if (targets.some((target) => target.type === 'page' && target.title === 'Harbor TV')) break;
+        if (targets.some(isHarborTarget)) break;
       } catch {
         // The debug target is still starting.
       }
