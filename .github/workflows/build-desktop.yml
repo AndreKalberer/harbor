@@ -72,6 +72,10 @@ jobs:
         if: runner.os == 'Windows'
         run: npm run test:desktop-smoke
 
+      - name: Run isolated TV remote-navigation smoke suite
+        if: runner.os == 'Windows'
+        run: npm run test:tv-smoke
+
       - name: Configure optional signing credentials
         shell: bash
         env:
@@ -169,9 +173,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Run isolated TV remote-navigation smoke suite
-        run: xvfb-run -a npm run test:tv-smoke
 
       - name: Configure TV catalog access
         shell: bash

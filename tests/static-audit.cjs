@@ -128,7 +128,7 @@ assert(landing.includes('https://github.com/AndreKalberer/harbor/releases/latest
 assert(!workflow.includes('HarborList-'), 'Legacy HarborList artifact names remain in CI.');
 assert(workflow.includes('npm run test:desktop-smoke') && workflow.includes("runner.os == 'Windows'"), 'CI does not run the isolated desktop consumer smoke suite.');
 assert(workflow.includes('npm run test:packaged-smoke'), 'CI does not smoke-test the packaged Windows app before upload.');
-assert(workflow.includes('xvfb-run -a npm run test:tv-smoke'), 'CI does not run the isolated TV remote-navigation smoke suite.');
+assert(workflow.includes('run: npm run test:tv-smoke'), 'CI does not run the isolated TV remote-navigation smoke suite.');
 assert(packageJson.scripts?.['test:all'] === 'npm run test:consumer && npm run test:tv-smoke', 'The complete consumer-readiness test command is missing.');
 assert(workflow.includes('WIN_CSC_LINK') && workflow.includes('MAC_CSC_LINK'), 'Platform-specific desktop signing credentials are not configured.');
 assert(workflow.includes('--repo "${GITHUB_REPOSITORY}"'), 'Tagged release publishing lacks explicit GitHub repository context.');
