@@ -7,8 +7,9 @@
   var watchBrowseApi = window.HarborWatchBrowse;
   var STATE_KEY = 'harbor:tv-state:v1';
   var sections = {
-    Home: ['All', 'Continue', 'My List'],
-    Watch: ['All', 'Movies', 'TV Shows', 'Anime', 'Sports', 'Live TV']
+    Home: ['Overview', 'Continue', 'My List'],
+    Watch: ['All', 'Movies', 'TV Shows', 'Anime', 'Sports', 'Live TV'],
+    Listen: ['All', 'Music', 'Soundtracks', 'Radio', 'Podcasts', 'Audiobooks']
   };
   var liveItems = [
     { id: 'live-sports', name: 'World Sports HD', category: 'Watch', type: 'live', section: 'Sports', meta: 'Live · Sports', summary: 'A live sports demo channel built for the Harbor TV player.', directStream: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4' },
@@ -20,6 +21,13 @@
     { id: 'tv-1399', tmdbId: '1399', name: 'Game of Thrones', category: 'Watch', type: 'tv', section: 'TV Shows', meta: '2011 · Series', summary: 'Noble families fight for control over the lands of Westeros.', image: TMDB_IMAGE + '/2OMB0ynKlyIenMJWI2Dy9IWT4c.jpg' },
     { id: 'anime-1429', tmdbId: '1429', name: 'Attack on Titan', category: 'Watch', type: 'anime', section: 'Anime', meta: '2013 · Anime', summary: 'Humanity fights for survival against towering enemies.', image: TMDB_IMAGE + '/rqbCbjB19amtOtFQbb3K2lgm2zv.jpg' },
     { id: 'anime-30984', tmdbId: '30984', name: 'Bleach', category: 'Watch', type: 'anime', section: 'Anime', meta: '2004 · Anime', summary: 'Ichigo Kurosaki becomes a Soul Reaper and protects the living and the dead from Hollows.', image: TMDB_IMAGE + '/5iVUUnE2tgBPypACYNobCKHagfV.jpg' }
+  ];
+  var fallbackListen = [
+    { id: 'listen-harbor-mix', name: 'Harbor Evening Mix', category: 'Listen', type: 'music', section: 'Music', meta: 'Harbor Mix · Music', summary: 'A relaxed mix for settling in after a long day.', preview: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+    { id: 'listen-cinematic', name: 'Cinematic Horizons', category: 'Listen', type: 'soundtrack', section: 'Soundtracks', meta: 'Harbor Mix · Soundtrack', summary: 'Wide-screen instrumentals selected for the living room.', preview: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
+    { id: 'listen-radio', name: 'Harbor Radio', category: 'Listen', type: 'radio', section: 'Radio', meta: 'Live · Radio', summary: 'A continuous station for discovering something new.', preview: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' },
+    { id: 'listen-podcast', name: 'The Harbor Briefing', category: 'Listen', type: 'podcast', section: 'Podcasts', meta: 'Podcast · Latest episode', summary: 'A concise roundup of stories worth carrying into your day.', preview: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3' },
+    { id: 'listen-audiobook', name: 'Stories After Dark', category: 'Listen', type: 'audiobook', section: 'Audiobooks', meta: 'Audiobook · Preview', summary: 'A narrated collection made for an unhurried evening.', preview: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3' }
   ];
   var TMDB_GENRE_LABELS = {
     16: 'Animation', 18: 'Drama', 27: 'Horror', 28: 'Action', 35: 'Comedy', 80: 'Crime',
@@ -43,7 +51,7 @@
     ] }
   };
 
-  var state = { section: 'Watch', subcategory: 'All', watchFilter: '', liveCountry: '', liveLanguage: '', liveFacets: { countries: [], languages: [], sports: [] }, liveTotal: 0, liveCached: false, page: 1, items: [], active: null, saved: [], history: [], query: '', canLoadMore: false, loading: false, seasons: [], season: 1, episode: 1, episodePage: 0, playerRoutes: [], playerRouteIndex: 0, playerMode: '' };
+  var state = { section: 'Watch', subcategory: 'All', watchFilter: '', liveCountry: '', liveLanguage: '', liveWindow: 'now', liveFacets: { countries: [], languages: [], sports: [] }, liveTotal: 0, liveCached: false, page: 1, items: [], active: null, saved: [], history: [], query: '', canLoadMore: false, loading: false, seasons: [], season: 1, episode: 1, episodePage: 0, playerRoutes: [], playerRouteIndex: 0, playerMode: '' };
   var seriesMetadataCache = {};
   var itemLoadGeneration = 0;
   var playerReady = false;
@@ -66,12 +74,15 @@
   var hero = document.getElementById('hero');
   var heroKicker = document.getElementById('hero-kicker');
   var heroTitle = document.getElementById('hero-title');
+  var heroMeta = document.getElementById('hero-meta');
   var heroSummary = document.getElementById('hero-summary');
   var heroPlay = document.getElementById('hero-play');
   var heroSave = document.getElementById('hero-save');
   var subcategoryRow = document.getElementById('subcategory-row');
   var watchFilterRow = document.getElementById('watch-filter-row');
   var liveFilterRow = document.getElementById('live-filter-row');
+  var liveNowButton = document.getElementById('live-now-button');
+  var liveSoonButton = document.getElementById('live-soon-button');
   var liveCountrySelect = document.getElementById('live-country-select');
   var liveLanguageSelect = document.getElementById('live-language-select');
   var liveFilterDone = document.getElementById('live-filter-done');
@@ -240,7 +251,7 @@
   }
 
   function liveItemId(entry, index) {
-    return 'iptv-' + String(entry.id || entry.channelId || entry.name || index).replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
+    return entry.catalogId || ('iptv-' + String(entry.id || entry.channelId || entry.name || index).replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase());
   }
 
   function normalizeLiveChannel(entry, index, filter) {
@@ -250,9 +261,9 @@
       category: 'Watch',
       type: 'live',
       section: state.subcategory,
-      tags: [filter.label || entry.group || state.subcategory].concat(entry.groups || []).concat(entry.languageNames || []),
-      meta: ['Live', entry.countryFlag, entry.countryName, (entry.languageNames || []).join(', '), entry.streams && entry.streams[0] && entry.streams[0].quality].filter(Boolean).join(' · '),
-      summary: ['A public live channel from the IPTV-org catalog, played directly inside Harbor.', entry.countryName || '', (entry.languageNames || []).join(', ')].filter(Boolean).join(' · '),
+      tags: [filter.label || entry.group || state.subcategory, entry.eventStatus || '', entry.sourceName || ''].concat(entry.groups || []).concat(entry.languageNames || []).filter(Boolean),
+      meta: [entry.eventStatus || 'Live', entry.countryFlag, entry.countryName, (entry.languageNames || []).join(', '), entry.streams && entry.streams[0] && entry.streams[0].quality].filter(Boolean).join(' · '),
+      summary: [entry.sourceDescription || 'A public live channel from the IPTV-org catalog, played directly inside Harbor.', entry.summary || '', entry.countryName || '', (entry.languageNames || []).join(', ')].filter(Boolean).join(' · '),
       image: entry.logo || '',
       directStream: entry.url,
       channelId: entry.channelId || '',
@@ -306,11 +317,12 @@
   function fetchWatch(query, page) {
     if (state.subcategory === 'Sports' || state.subcategory === 'Live TV') {
       var liveFilter = watchBrowseApi.getFilter(state.subcategory, state.watchFilter);
-      return watchBrowseApi.loadLiveDirectory(state.subcategory, state.watchFilter, {
+      return watchBrowseApi.loadLiveWindowDirectory(state.subcategory, state.watchFilter, {
         limit: 240,
         country: state.liveCountry,
         language: state.liveLanguage,
         query: query,
+        liveWindow: state.liveWindow,
         platform: window.tizen ? 'tizen' : '',
         storage: localStorage
       }).then(function (directory) {
@@ -397,9 +409,17 @@
     if (state.section === 'Home') {
       if (state.subcategory === 'My List') return Promise.resolve(state.saved.filter(function (item) { return itemMatchesQuery(item, query); }));
       if (state.subcategory === 'Continue') return Promise.resolve(state.history.filter(function (item) { return itemMatchesQuery(item, query); }));
-      if (query) return fetchWatch(query, page);
-      return fetchWatch('', page);
+      var seen = {};
+      var overview = state.history.map(function (item) { return Object.assign({}, item, { homeBadge: 'Continue' }); })
+        .concat(state.saved.map(function (item) { return Object.assign({}, item, { homeBadge: 'My List' }); }))
+        .filter(function (item) {
+          if (!item || seen[item.id]) return false;
+          seen[item.id] = true;
+          return itemMatchesQuery(item, query);
+        });
+      return Promise.resolve(overview);
     }
+    if (state.section === 'Listen') return fetchListen(query, page);
     return fetchWatch(query, page);
   }
 
@@ -415,6 +435,7 @@
         if (state.subcategory !== name) {
           state.liveCountry = '';
           state.liveLanguage = '';
+          state.liveWindow = 'now';
           state.liveFacets = { countries: [], languages: [], sports: [] };
           state.liveTotal = 0;
           state.liveCached = false;
@@ -476,17 +497,28 @@
     if (!visible) return;
     replaceLiveOptions(liveCountrySelect, 'All countries', state.liveFacets.countries || [], state.liveCountry);
     replaceLiveOptions(liveLanguageSelect, 'All languages', state.liveFacets.languages || [], state.liveLanguage);
+    liveNowButton.classList.toggle('active', state.liveWindow === 'now');
+    liveSoonButton.classList.toggle('active', state.liveWindow === 'soon');
+    liveNowButton.setAttribute('aria-pressed', String(state.liveWindow === 'now'));
+    liveSoonButton.setAttribute('aria-pressed', String(state.liveWindow === 'soon'));
+    var activeFilter = watchBrowseApi.getFilter(state.subcategory, state.watchFilter);
+    var sourceLabel = activeFilter && activeFilter.source === 'free-events' ? 'official free-event feeds' : 'IPTV-org and Harbor stream health';
     liveDirectoryStatus.textContent = state.loading
-      ? 'Checking IPTV-org and Harbor stream health…'
-      : Math.max(state.liveTotal, state.items.length) + ' compatible channels' + (state.liveCached ? ' · cached directory' : ' · unsafe and unsupported streams removed');
+      ? 'Checking ' + sourceLabel + '…'
+      : state.liveWindow === 'soon'
+        ? Math.max(state.liveTotal, state.items.length) + ' upcoming listings · later today and the next seven days'
+        : Math.max(state.liveTotal, state.items.length) + ' channels live now' + (state.liveCached ? ' · cached directory' : ' · unsafe and unsupported streams removed');
   }
 
   function renderHero() {
     state.active = state.items[0] || null;
     if (!state.active) {
-      heroKicker.textContent = state.query ? 'No matches' : 'Nothing here yet';
-      heroTitle.textContent = state.query ? 'No results for “' + state.query + '”' : 'Try another category';
-      heroSummary.textContent = state.query ? 'Check the spelling or search a different title.' : 'Harbor will show available titles here.';
+      var emptyHome = state.section === 'Home';
+      heroKicker.textContent = state.query ? 'No matches' : emptyHome ? 'Your space' : 'Nothing here yet';
+      heroTitle.textContent = state.query ? 'No results for “' + state.query + '”' : emptyHome ? 'Make Harbor yours.' : 'Try another category';
+      heroMeta.textContent = '';
+      heroMeta.hidden = true;
+      heroSummary.textContent = state.query ? 'Check the spelling or search a different title.' : emptyHome ? 'Save a title or start watching and it will appear here.' : 'Harbor will show available titles here.';
       hero.style.backgroundImage = '';
       heroPlay.hidden = true;
       heroSave.hidden = true;
@@ -494,9 +526,12 @@
     }
     heroPlay.hidden = false;
     heroSave.hidden = false;
-    heroKicker.textContent = state.active.category === 'Watch' ? 'Tonight on Harbor' : state.active.category || 'Harbor';
+    heroKicker.textContent = state.section === 'Home' ? (state.active.homeBadge || 'My Harbor') : state.active.category === 'Watch' ? 'Tonight on Harbor' : state.active.category || 'Harbor';
     heroTitle.textContent = state.active.name;
+    heroMeta.textContent = state.active.meta || [state.active.category, state.active.section].filter(Boolean).join(' · ');
+    heroMeta.hidden = !heroMeta.textContent;
     heroSummary.textContent = state.active.summary || 'Open this in Harbor.';
+    heroPlay.textContent = state.active.category === 'Listen' ? '▶ Listen' : state.active.category === 'Read' ? '▶ Read' : state.active.type === 'live' ? '▶ Watch live' : '▶ Watch';
     if (state.active.image) hero.style.backgroundImage = 'linear-gradient(90deg, #08040f 0%, rgba(8,4,15,.86) 43%, rgba(8,4,15,.12) 78%), linear-gradient(transparent 60%, #050208), url("' + state.active.image.replace(/"/g, '') + '")';
     else hero.style.backgroundImage = '';
     updateSaveButtons();
@@ -508,6 +543,7 @@
       var card = document.createElement('button');
       card.type = 'button';
       card.className = 'media-card focusable' + (isSaved(item) ? ' saved' : '');
+      card.dataset.category = item.category || '';
       card.setAttribute('aria-pressed', String(isSaved(item)));
       card.setAttribute('aria-label', item.name + ' · ' + (item.meta || item.category));
       var art = document.createElement('span');
@@ -524,17 +560,21 @@
         image.src = item.image;
         art.appendChild(image);
       }
-      var badge = document.createElement('span'); badge.textContent = item.type || item.category; art.appendChild(badge);
+      var badge = document.createElement('span'); badge.textContent = item.homeBadge || item.type || item.category; art.appendChild(badge);
       var title = document.createElement('h3'); title.textContent = item.name;
       var meta = document.createElement('p'); meta.textContent = item.meta || item.category;
       card.appendChild(art); card.appendChild(title); card.appendChild(meta);
       card.addEventListener('click', function () { openDetail(item); });
       cardGrid.appendChild(card);
     });
-    if (!state.items.length) cardGrid.innerHTML = '<div class="empty-state"><h3>No titles found</h3><p>Try a different search or category.</p></div>';
+    if (!state.items.length) cardGrid.innerHTML = state.section === 'Home'
+      ? '<div class="empty-state"><h3>Your Harbor is ready</h3><p>Save a title or start watching to build your personal home.</p></div>'
+      : '<div class="empty-state"><h3>No titles found</h3><p>Try a different search or category.</p></div>';
     var isLive = state.subcategory === 'Sports' || state.subcategory === 'Live TV';
     resultCount.textContent = isLive
-      ? state.items.length + ' of ' + Math.max(state.liveTotal, state.items.length) + ' compatible channels'
+      ? state.liveWindow === 'soon'
+        ? state.items.length + ' upcoming listings'
+        : state.items.length + ' of ' + Math.max(state.liveTotal, state.items.length) + ' channels live now'
       : state.items.length + (state.items.length === 1 ? ' title' : ' titles');
     renderLiveFilters();
     moreButton.hidden = !state.canLoadMore;
@@ -546,8 +586,8 @@
     moreButton.disabled = true;
     if (!append) { state.items = []; cardGrid.innerHTML = '<p role="status">Loading Harbor…</p>'; renderSubcategories(); }
     var browseFilter = state.section === 'Watch' ? watchBrowseApi.getFilter(state.subcategory, state.watchFilter) : null;
-    rowKicker.textContent = state.query ? state.section + ' search' : state.subcategory;
-    rowTitle.textContent = state.query ? 'Results for “' + state.query + '”' : state.section === 'Home' ? state.subcategory : browseFilter ? browseFilter.label + ' ' + state.subcategory : 'Browse ' + state.subcategory;
+    rowKicker.textContent = state.query ? state.section + ' search' : state.section === 'Home' ? 'My Harbor' : state.subcategory;
+    rowTitle.textContent = state.query ? 'Results for “' + state.query + '”' : state.section === 'Home' ? (state.subcategory === 'Overview' ? 'Continue & My List' : state.subcategory) : (state.subcategory === 'Sports' || state.subcategory === 'Live TV') ? (state.liveWindow === 'soon' ? 'Live Soon' : 'Live Now') : browseFilter ? browseFilter.label + ' ' + state.subcategory : 'Browse ' + state.subcategory;
     return fetchCurrent(state.query, state.page).then(function (items) {
       if (generation !== itemLoadGeneration) return;
       var next = items.filter(function (item) { return item && item.name; });
@@ -559,6 +599,7 @@
       if (state.query) state.items = [];
       else if (state.section === 'Home' && state.subcategory === 'My List') state.items = state.saved;
       else if (state.section === 'Home' && state.subcategory === 'Continue') state.items = state.history;
+      else if (state.section === 'Listen') state.items = fallbackListen.filter(function (item) { return state.subcategory === 'All' || item.section === state.subcategory; });
       else state.items = fallbackWatch.concat(liveItems).filter(function (item) { return matchesWatchSubcategory(item) && matchesWatchFilter(item); });
       state.loading = false; moreButton.disabled = false; state.canLoadMore = false; renderHero(); renderCards(); notify(state.query ? 'Search is unavailable right now.' : 'Harbor is offline. Showing saved picks.');
     });
@@ -566,7 +607,8 @@
 
   function setSection(section) {
     state.section = section;
-    state.subcategory = 'All'; state.watchFilter = ''; state.liveCountry = ''; state.liveLanguage = ''; state.liveFacets = { countries: [], languages: [], sports: [] }; state.liveTotal = 0; state.liveCached = false; state.query = ''; state.page = 1;
+    state.subcategory = (sections[section] || ['All'])[0]; state.watchFilter = ''; state.liveCountry = ''; state.liveLanguage = ''; state.liveWindow = 'now'; state.liveFacets = { countries: [], languages: [], sports: [] }; state.liveTotal = 0; state.liveCached = false; state.query = ''; state.page = 1;
+    document.body.dataset.section = section;
     document.querySelectorAll('[data-section]').forEach(function (button) {
       var active = button.getAttribute('data-section') === section;
       button.classList.toggle('active', active);
@@ -688,7 +730,14 @@
     var generation = ++liveGuideGeneration;
     var guideNow = new Date();
     resetLiveGuide();
-    detailGuideStatus.textContent = 'Checking IPTV-org programme sources…';
+    if (!item.channelId && /^cgtn-/i.test(item.id || '')) {
+      detailGuideStatus.textContent = 'This official event feed does not publish a separate programme guide.';
+      detailGuideNowEmpty.hidden = false;
+      detailGuideTodayEmpty.hidden = false;
+      detailGuideWeekEmpty.hidden = false;
+      return;
+    }
+    detailGuideStatus.textContent = 'Checking published programme sources…';
     watchBrowseApi.loadLiveGuide(item.channelId, item.feedId, { limit: 60, horizonDays: 7, now: guideNow }).then(function (guide) {
       if (generation !== liveGuideGeneration || !state.active || state.active.id !== item.id || detailPanel.hidden) return;
       if (!guide.programmes || !guide.programmes.length) {
@@ -720,12 +769,15 @@
     detailTitle.textContent = item.name;
     detailMeta.textContent = item.meta || '';
     detailSummary.textContent = item.summary || 'Open this title in Harbor.';
+    detailPanel.style.setProperty('--detail-artwork', item.image ? 'url("' + item.image.replace(/"/g, '') + '")' : 'none');
+    detailPanel.classList.toggle('has-artwork', Boolean(item.image));
     updateSaveButtons();
     var isSeries = item.type === 'tv' || item.type === 'anime';
     var isLive = item.type === 'live';
     episodeBrowser.hidden = !isSeries;
     detailLiveGuide.hidden = !isLive;
     if (isLive) loadLiveGuide(item); else liveGuideGeneration += 1;
+    detailPlay.textContent = item.category === 'Listen' ? '▶ Listen' : item.category === 'Read' ? '▶ Read' : isLive ? '▶ Watch live' : '▶ Watch';
     detailPlay.hidden = isSeries;
     detailPlay.disabled = isSeries;
     if (isSeries) {
@@ -961,7 +1013,7 @@
       }
     }
     syncOverlayAccessibility();
-    if (focusBeforeOverlay && typeof focusBeforeOverlay.focus === 'function' && document.documentElement.contains(focusBeforeOverlay)) setTimeout(function () { focusBeforeOverlay.focus(); }, 0);
+    if (focusBeforeOverlay && typeof focusBeforeOverlay.focus === 'function' && document.documentElement.contains(focusBeforeOverlay)) setTimeout(function () { focusBeforeOverlay.focus(); revealFocused(focusBeforeOverlay); }, 0);
   }
 
   function visibleFocusables() {
@@ -1008,8 +1060,8 @@
     var rect = element.getBoundingClientRect();
     var topBoundary = 118;
     var bottomBoundary = window.innerHeight - 90;
-    if (rect.top < topBoundary) window.scrollBy(0, rect.top - topBoundary - 24);
-    else if (rect.bottom > bottomBoundary) window.scrollBy(0, rect.bottom - bottomBoundary + 24);
+    if (rect.top < topBoundary) window.scrollTo(0, Math.max(0, window.pageYOffset + rect.top - topBoundary - 24));
+    else if (rect.bottom > bottomBoundary) window.scrollTo(0, Math.max(0, window.pageYOffset + rect.bottom - bottomBoundary + 24));
   }
 
   function semanticFocusTarget(current, direction) {
@@ -1043,11 +1095,14 @@
     if (semantic) { semantic.focus(); revealFocused(semantic); return; }
     var from = current.getBoundingClientRect(); var fx = from.left + from.width / 2; var fy = from.top + from.height / 2;
     var best = null; var bestScore = Infinity;
+    var horizontal = direction === 'left' || direction === 'right';
+    var currentHorizontalRow = current.parentElement && (current.parentElement.classList.contains('subcategory-row') || current.parentElement.classList.contains('watch-filter-row') || current.parentElement.classList.contains('tv-nav')) ? current.parentElement : null;
     candidates.forEach(function (candidate) {
       if (candidate === current) return;
+      if (horizontal && current.classList.contains('media-card') && !candidate.classList.contains('media-card')) return;
+      if (horizontal && currentHorizontalRow && candidate.parentElement !== currentHorizontalRow) return;
       var rect = candidate.getBoundingClientRect(); var x = rect.left + rect.width / 2; var y = rect.top + rect.height / 2; var dx = x - fx; var dy = y - fy;
       if ((direction === 'left' && dx >= -4) || (direction === 'right' && dx <= 4) || (direction === 'up' && dy >= -4) || (direction === 'down' && dy <= 4)) return;
-      var horizontal = direction === 'left' || direction === 'right';
       var primary = horizontal ? Math.abs(dx) : Math.abs(dy);
       var secondary = horizontal ? Math.abs(dy) : Math.abs(dx);
       var alignment = horizontal ? Math.min(from.bottom, rect.bottom) - Math.max(from.top, rect.top) : Math.min(from.right, rect.right) - Math.max(from.left, rect.left);
@@ -1070,9 +1125,11 @@
   document.querySelectorAll('[data-section]').forEach(function (button) { button.addEventListener('click', function () { setSection(button.getAttribute('data-section')); }); });
   document.querySelector('[data-action="watch"]').addEventListener('click', function (event) { event.preventDefault(); setSection('Watch'); });
   document.getElementById('search-button').addEventListener('click', function () { focusBeforeOverlay = document.activeElement; searchPanel.hidden = false; syncOverlayAccessibility(); searchInput.value = state.query; searchInput.placeholder = 'Search ' + (state.subcategory === 'All' ? state.section : state.subcategory); setTimeout(function () { searchInput.focus(); searchInput.select(); }, 0); });
-  document.getElementById('list-button').addEventListener('click', function () { state.section = 'Home'; state.subcategory = 'My List'; state.watchFilter = ''; state.liveCountry = ''; state.liveLanguage = ''; state.query = ''; state.page = 1; loadItems(false); });
+  document.getElementById('list-button').addEventListener('click', function () { setSection('Home'); });
   liveCountrySelect.addEventListener('change', function () { state.liveCountry = liveCountrySelect.value; state.page = 1; loadItems(false).then(function () { liveCountrySelect.focus(); }); });
   liveLanguageSelect.addEventListener('change', function () { state.liveLanguage = liveLanguageSelect.value; state.page = 1; loadItems(false).then(function () { liveLanguageSelect.focus(); }); });
+  liveNowButton.addEventListener('click', function () { if (state.liveWindow === 'now') return; state.liveWindow = 'now'; state.page = 1; loadItems(false).then(function () { liveNowButton.focus(); }); });
+  liveSoonButton.addEventListener('click', function () { if (state.liveWindow === 'soon') return; state.liveWindow = 'soon'; state.page = 1; loadItems(false).then(function () { liveSoonButton.focus(); }); });
   liveFilterDone.addEventListener('click', function () { var card = cardGrid.querySelector('.media-card'); if (card) { card.focus(); revealFocused(card); } });
   searchForm.addEventListener('submit', function (event) {
     event.preventDefault(); state.query = searchInput.value.trim(); state.page = 1; searchPanel.hidden = true; syncOverlayAccessibility();

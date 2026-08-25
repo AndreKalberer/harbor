@@ -51,17 +51,18 @@ const run = async () => {
   })`);
   const result = await evaluate(`(async () => {
     setActiveSection('Watch');
-    const originalDirectory = watchBrowseApi.loadLiveDirectory;
+    const originalDirectory = watchBrowseApi.loadLiveWindowDirectory;
     const originalGuide = watchBrowseApi.loadLiveGuide;
     const liveChannels = [
       { id: 'NBATV.us@SD', channelId: 'NBATV.us', feedId: 'SD', name: 'NBA Basketball', logo: '', group: 'Sports', groups: ['Sports'], categories: ['sports'], countryCode: 'US', countryName: 'United States', countryFlag: '🇺🇸', languageCodes: ['eng'], languageNames: ['English'], sports: ['basketball'], url: 'https://media.example/nba.m3u8', streams: [{ url: 'https://media.example/nba.m3u8', type: 'hls', quality: '1080p', label: '' }] },
       { id: 'Soccer.es@SD', channelId: 'Soccer.es', feedId: 'SD', name: 'Fútbol Mundial', logo: '', group: 'Sports', groups: ['Sports'], categories: ['sports'], countryCode: 'ES', countryName: 'Spain', countryFlag: '🇪🇸', languageCodes: ['spa'], languageNames: ['Spanish'], sports: ['soccer'], url: 'https://media.example/soccer.m3u8', streams: [{ url: 'https://media.example/soccer.m3u8', type: 'hls', quality: '720p', label: '' }] }
     ];
-    watchBrowseApi.loadLiveDirectory = async (_section, _filter, options) => {
+    watchBrowseApi.loadLiveWindowDirectory = async (_section, _filter, options) => {
       const needle = String(options.query || '').toLowerCase();
-      const channels = liveChannels.filter((channel) => (!options.country || channel.countryCode === options.country)
+      let channels = liveChannels.filter((channel) => (!options.country || channel.countryCode === options.country)
         && (!options.language || channel.languageCodes.includes(options.language))
         && (!needle || (channel.name + ' ' + channel.countryName + ' ' + channel.languageNames.join(' ')).toLowerCase().includes(needle)));
+      if (options.liveWindow === 'soon') channels = channels.slice(0, 1).map((channel) => ({ ...channel, id: 'schedule-nba', catalogId: 'schedule-nba', name: 'Basketball Later This Week', eventStatus: 'Upcoming', eventStart: new Date(Date.now() + 172800000).toISOString(), group: 'Later this week', groups: ['Later this week', 'Live Soon', 'Sports'] }));
       return { channels, total: channels.length, cached: false, facets: { countries: [{ code: 'ES', name: 'Spain', flag: '🇪🇸' }, { code: 'US', name: 'United States', flag: '🇺🇸' }], languages: [{ code: 'eng', name: 'English' }, { code: 'spa', name: 'Spanish' }], sports: [] } };
     };
     watchBrowseApi.loadLiveGuide = async () => ({ status: 'available', provider: 'Harbor fixture', language: 'en', programmes: [
@@ -99,7 +100,10 @@ const run = async () => {
     language.dispatchEvent(new Event('change', { bubbles: true }));
     await new Promise((resolve) => setTimeout(resolve, 40));
     beginSearch('basketball');
-    await new Promise((resolve) => setTimeout(resolve, 240));
+    const searchDeadline = Date.now() + 3000;
+    while (!document.querySelector('#resource-list .media-card-open') && Date.now() < searchDeadline) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
     const liveControls = {
       visible: !document.querySelector('#live-directory-controls').hidden,
       countries: document.querySelectorAll('#live-country-select option').length,
@@ -107,14 +111,29 @@ const run = async () => {
       cards: [...document.querySelectorAll('#resource-list .media-card-title')].map((node) => node.textContent.trim()),
       status: document.querySelector('#live-directory-status').textContent
     };
-    document.querySelector('#resource-list .media-card-open').click();
+    liveControls.windows = [document.querySelector('#live-now-button').textContent.trim(), document.querySelector('#live-soon-button').textContent.trim()];
+    const firstLiveCard = document.querySelector('#resource-list .media-card-open');
+    if (!firstLiveCard) throw new Error(JSON.stringify({
+      activeSubcategory,
+      activeWatchFilter,
+      activeLiveCountry,
+      activeLiveLanguage,
+      query,
+      status: liveControls.status,
+      body: document.querySelector('#resource-list').textContent.trim().slice(0, 500)
+    }));
+    firstLiveCard.click();
     await new Promise((resolve) => setTimeout(resolve, 40));
     liveControls.guide = [...document.querySelectorAll('.detail-guide-list strong')].map((node) => node.textContent.trim());
     document.querySelector('#close-detail-dialog-btn').click();
     query = ''; searchInput.value = '';
+    document.querySelector('#live-soon-button').click();
+    const soonDeadline = Date.now() + 3000;
+    while (!document.querySelector('#resource-list .media-card-title') && Date.now() < soonDeadline) await new Promise((resolve) => setTimeout(resolve, 25));
+    liveControls.soonCards = [...document.querySelectorAll('#resource-list .media-card-title')].map((node) => node.textContent.trim());
     category('Live TV').click();
     const liveTv = filterLabels();
-    watchBrowseApi.loadLiveDirectory = originalDirectory;
+    watchBrowseApi.loadLiveWindowDirectory = originalDirectory;
     watchBrowseApi.loadLiveGuide = originalGuide;
     resetFilters();
     return { movies, horror, sports, liveTv, liveControls, hlsLoaded: typeof Hls === 'function' };
@@ -124,7 +143,8 @@ const run = async () => {
       || result.horror.active !== 'Horror' || result.sports.length < 8 || result.liveTv.length < 8
       || !result.liveControls.visible || result.liveControls.countries < 3 || result.liveControls.languages < 3
       || result.liveControls.cards.join('|') !== 'NBA Basketball' || result.liveControls.guide.join('|') !== 'Live Basketball|Basketball Later This Week'
-      || !result.liveControls.status.includes('compatible channels') || !result.hlsLoaded) {
+      || result.liveControls.windows.join('|') !== '● Live Now|Live Soon' || result.liveControls.soonCards.join('|') !== 'Basketball Later This Week'
+      || !result.liveControls.status.includes('channels live now') || !result.hlsLoaded) {
     throw new Error('Desktop Watch filter regression failed: ' + JSON.stringify(result));
   }
   socket.close();

@@ -50,6 +50,9 @@ const basketballChannel = {
   sports: liveTv.classifySports('NBA Basketball Network')
 };
 assert.deepEqual(basketballChannel.sports, ['basketball']);
+assert.deepEqual(liveTv.classifySports('World Humanoid Robot Games'), ['robotics']);
+assert.ok(liveTv.tizenAllowedHosts.includes('live-stream.cgtn.com'));
+assert.ok(liveTv.tizenAllowedHosts.includes('envod.cgtn.com'));
 assert.equal(liveTv.filterChannels([basketballChannel], { country: 'US', language: 'eng', sport: 'basketball', query: 'united english' }).length, 1);
 assert.equal(liveTv.filterChannels([basketballChannel], { language: 'spa' }).length, 0);
 assert.equal(liveTv.filterChannels([basketballChannel], { platform: 'tizen' }).length, 1);

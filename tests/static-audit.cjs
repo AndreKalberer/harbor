@@ -112,15 +112,18 @@ for (const section of ['Movies', 'TV Shows', 'Anime', 'Sports', 'Live TV']) {
   assert(watchBrowse.includes(section), `Shared Watch filters are missing ${section}.`);
 }
 assert(watchBrowse.includes('loadLiveChannels') && watchBrowse.includes('parseM3u'), 'Playable Sports and Live TV catalogs are missing.');
+assert(watchBrowse.includes("id: 'robot-games'") && watchBrowse.includes('loadFreeEventDirectory'), 'Official free Robot Games coverage is missing.');
+assert(watchBrowse.includes("playlistCategory: 'science'") && watchBrowse.includes("playlistCategory: 'travel'"), 'The remaining safe public Live TV categories are not exposed.');
 for (const protection of ['blocklist.json', 'supportedStreamType', 'markStreamFailure', 'isQuarantined', 'loadGuide']) {
   assert(liveTv.includes(protection), `Live-channel protection is missing: ${protection}`);
 }
 assert(appHtml.includes('id="live-country-select"') && appHtml.includes('id="live-language-select"'), 'Desktop live country/language filters are missing.');
+assert(appHtml.includes('id="live-now-button"') && appHtml.includes('id="live-soon-button"') && renderer.includes('loadLiveWindowDirectory'), 'Desktop browse-level Live Now or Live Soon is missing.');
 assert(renderer.includes('loadLiveGuide') && renderer.includes('tryNextLiveStream'), 'Desktop live guide or alternate-stream recovery is missing.');
 assert(renderer.includes('seriesMetadataApi.normalizeSeriesSeasons'), 'Desktop series details do not use canonical season metadata.');
 assert(!renderer.includes('renderEpisodeChips(24)'), 'Desktop still fabricates 24 episodes for every season.');
 assert(!renderer.includes('episodesPerSeason') && !renderer.includes('seasonsCount'), 'Desktop catalog still carries fabricated series counts.');
-assert(appHtml.includes('id="detail-play-btn"') && desktopDetailFlow.includes("const isLive = item.type === 'live'") && desktopDetailFlow.includes('detailPlayBtn.hidden = !isLive'), 'Desktop live playback is not isolated from series episode actions.');
+assert(appHtml.includes('id="detail-play-btn"') && desktopDetailFlow.includes("const isLive = item.type === 'live'") && desktopDetailFlow.includes('detailPlayBtn.hidden = isSeries') && desktopDetailFlow.includes("detailPlayBtn.textContent = isLive ? '▶ Watch live' : '▶ Watch'"), 'Desktop detail actions do not distinguish movies, live playback, and series episode actions.');
 assert(renderer.includes('startStreamPlayback(activeMedia, activeSeason, activeEpisode);'), 'Desktop episode buttons do not start playback directly.');
 assert(desktopDetailFlow.indexOf('mediaDetailDialog.showModal()') < desktopDetailFlow.indexOf('activeSeriesSeasons = await fetchTvShowDetails'), 'Desktop series details do not expose their loading state immediately.');
 assert(renderer.includes("failures.add(provider.key)") && renderer.includes('partial results'), 'Desktop search does not disclose partial provider failures.');
@@ -150,7 +153,7 @@ for (const artifact of ['Harbor-Windows', 'Harbor-Linux', 'Harbor-macOS', 'SHA25
   assert(workflow.includes(artifact), `Release workflow is missing ${artifact}.`);
 }
 assert(!tvHtml.includes('sandbox='), 'TV player still uses an iframe sandbox that its playback providers reject.');
-assert(!tvHtml.includes('data-section="Watch"') && tvHtml.includes('data-action="watch"'), 'The visible TV Watch navigation label was not removed.');
+assert(tvHtml.includes('class="tv-nav"') && tvHtml.includes('data-section="Home"') && tvHtml.includes('data-section="Watch"') && tvHtml.includes('data-section="Listen"') && tvHtml.includes('data-action="watch"'), 'The TV top-level Home, Watch, and Listen navigation is incomplete.');
 assert(tvHtml.includes('id="watch-filter-row"'), 'TV Watch subcategory filters are missing.');
 assert(tvHtml.includes('id="live-country-select"') && tvHtml.includes('id="live-language-select"'), 'TV live country/language filters are missing.');
 assert(!tvHtml.includes('allow-popups'), 'TV player grants popup permission.');
@@ -172,8 +175,10 @@ for (const feature of ['fetchSeriesMetadata', 'renderEpisodeBrowser', 'loadPlaye
 assert(!tvScript.includes("'/1/1'"), 'TV playback is still hardcoded to season 1 episode 1.');
 assert(tvScript.includes('No titles found'), 'TV zero-result searches do not have an empty state.');
 assert(tvScript.includes('loadLiveGuide') && tvScript.includes('tryNextLiveStream'), 'TV live guide or alternate-stream recovery is missing.');
+assert(tvHtml.includes('id="live-now-button"') && tvHtml.includes('id="live-soon-button"') && tvScript.includes('loadLiveWindowDirectory'), 'TV browse-level Live Now or Live Soon is missing.');
 assert(tvScript.includes('detailPlay.hidden = isSeries') && tvScript.includes('openPlayer(state.active);'), 'TV episode buttons do not start playback directly.');
 assert(tvScript.includes("current === searchInput && (direction === 'right' || direction === 'down')") && tvScript.includes("document.activeElement === searchInput"), 'TV search cannot be reached and submitted through the remote path.');
+assert(tvScript.includes("current.classList.contains('media-card') && !candidate.classList.contains('media-card')") && tvStyles.includes('scroll-behavior: auto'), 'TV horizontal focus can escape its card row or lag behind smooth page scrolling.');
 assert(tvScript.includes('artFallback.hidden = true') && tvScript.includes("card.setAttribute('aria-label'"), 'TV poster fallbacks or card accessible names are not normalized.');
 assert(tvScript.includes("typeof XMLHttpRequest === 'function'") && tvScript.includes('request.ontimeout'), 'Legacy webOS requests do not use an aborting timeout.');
 for (const keyCode of ['code === 37', 'code === 38', 'code === 39', 'code === 40']) {
@@ -197,6 +202,9 @@ for (const origin of ['api.themoviedb.org', 'image.tmdb.org', 'itunes.apple.com'
   assert(samsungManifest.includes(origin), `Samsung network access is missing ${origin}.`);
 }
 assert(samsungManifest.includes('iptv-org.github.io'), 'Samsung network access is missing the public live catalog.');
+for (const origin of ['api.cgtn.com', 'news.cgtn.com', 'live-stream.cgtn.com', 'envod.cgtn.com']) {
+  assert(samsungManifest.includes(origin), `Samsung network access is missing official free-event host ${origin}.`);
+}
 assert(androidManifest.includes('android.intent.category.LEANBACK_LAUNCHER'), 'Android TV launcher support is missing.');
 assert(androidGradle.includes('file("../../build/android-assets")'), 'Android bundle assets path is incorrect.');
 assert(androidGradle.includes('androidx.webkit:webkit') && read(path.join('tv', 'android', 'app', 'src', 'main', 'java', 'com', 'harbor', 'tv', 'MainActivity.java')).includes('WebViewAssetLoader'), 'Android TV does not use the secure app-assets origin.');

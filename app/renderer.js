@@ -1,6 +1,8 @@
 const categoryList = document.querySelector('#category-list');
 const watchFilterList = document.querySelector('#watch-filter-list');
 const liveDirectoryControls = document.querySelector('#live-directory-controls');
+const liveNowButton = document.querySelector('#live-now-button');
+const liveSoonButton = document.querySelector('#live-soon-button');
 const liveCountrySelect = document.querySelector('#live-country-select');
 const liveLanguageSelect = document.querySelector('#live-language-select');
 const liveDirectoryStatus = document.querySelector('#live-directory-status');
@@ -455,6 +457,7 @@ let watchBrowseCanLoadMore = false;
 let watchBrowsePage = 1;
 let activeLiveCountry = '';
 let activeLiveLanguage = '';
+let activeLiveWindow = 'now';
 let liveDirectoryFacets = { countries: [], languages: [], sports: [] };
 let liveDirectoryTotal = 0;
 let liveDirectoryCached = false;
@@ -670,6 +673,7 @@ const currentWatchBrowseKey = () => [
   activeWatchFilter,
   isLiveDirectory() ? activeLiveCountry : '',
   isLiveDirectory() ? activeLiveLanguage : '',
+  isLiveDirectory() ? activeLiveWindow : '',
   isLiveDirectory() ? normalizeSearchText(query) : ''
 ].join(':');
 
@@ -824,27 +828,30 @@ const formatTmdbItem = (item) => {
   };
 };
 
-const liveItemId = (entry, index) => 'iptv-' + String(entry.id || entry.channelId || entry.name || index)
+const liveItemId = (entry, index) => entry.catalogId || ('iptv-' + String(entry.id || entry.channelId || entry.name || index)
   .replace(/[^a-z0-9]+/gi, '-')
   .replace(/^-+|-+$/g, '')
-  .toLowerCase();
+  .toLowerCase());
 
 const formatLiveChannel = (entry, index, section, filter) => ({
   id: liveItemId(entry, index),
   name: entry.name || 'Live channel',
   category: 'Watch',
   type: 'live',
-  year: 'Live',
+  year: entry.eventStatus || 'Live',
   rating: '',
   sections: [...new Set([
     section,
     filter?.label || entry.group || 'Live TV',
+    entry.eventStatus || '',
+    entry.sourceName || '',
     ...(entry.groups || []),
     entry.countryName || '',
     ...(entry.languageNames || [])
   ].filter(Boolean))],
   overview: [
-    'A public live channel from the IPTV-org catalog, played directly inside Harbor.',
+    entry.sourceDescription || 'A public live channel from the IPTV-org catalog, played directly inside Harbor.',
+    entry.summary || '',
     entry.countryName ? (entry.countryFlag ? entry.countryFlag + ' ' : '') + entry.countryName : '',
     entry.languageNames?.length ? entry.languageNames.join(', ') : '',
     entry.streams?.[0]?.quality || ''
@@ -861,7 +868,7 @@ const formatLiveChannel = (entry, index, section, filter) => ({
   liveCategories: [...(entry.categories || [])],
   sports: [...(entry.sports || [])],
   streamCandidates: (entry.streams || []).map((stream) => ({ ...stream })),
-  sources: [{ name: 'PUBLIC LIVE STREAM', badge: 'badge-relay' }]
+  sources: [{ name: entry.sourceName ? entry.sourceName + ' OFFICIAL FEED' : 'PUBLIC LIVE STREAM', badge: 'badge-relay' }]
 });
 
 const localWatchBrowseItems = () => getSectionItems('Watch', activeSubcategory)
@@ -883,12 +890,13 @@ const loadActiveWatchBrowse = async ({ append = false } = {}) => {
   try {
     let items = [];
     let canLoadMore = false;
-    if (filter.source === 'iptv') {
-      const directory = await watchBrowseApi.loadLiveDirectory(activeSubcategory, activeWatchFilter, {
+    if (filter.source === 'iptv' || filter.source === 'free-events') {
+      const directory = await watchBrowseApi.loadLiveWindowDirectory(activeSubcategory, activeWatchFilter, {
         limit: 240,
         country: activeLiveCountry,
         language: activeLiveLanguage,
         query: query.trim(),
+        liveWindow: activeLiveWindow,
         storage: localStorage
       });
       items = directory.channels.map((entry, index) => formatLiveChannel(entry, index, activeSubcategory, filter));
@@ -913,7 +921,7 @@ const loadActiveWatchBrowse = async ({ append = false } = {}) => {
     watchBrowseCanLoadMore = filter.source === 'tmdb' && canLoadMore;
     watchBrowseLoading = false;
     watchBrowseLoaded = true;
-    if (filter.source === 'iptv' && query.trim()) {
+    if ((filter.source === 'iptv' || filter.source === 'free-events') && query.trim()) {
       currentMediaList = [...items];
       searchState = { term: normalizeSearchText(query), loading: false, total: liveDirectoryTotal, page: 1, canLoadMore: false, partial: false };
     }
@@ -924,7 +932,7 @@ const loadActiveWatchBrowse = async ({ append = false } = {}) => {
     watchBrowseCanLoadMore = false;
     watchBrowseLoading = false;
     watchBrowseLoaded = true;
-    if (filter.source === 'iptv') {
+    if (filter.source === 'iptv' || filter.source === 'free-events') {
       liveDirectoryTotal = watchBrowseItems.length;
       liveDirectoryCached = false;
       if (query.trim()) {
@@ -1505,9 +1513,19 @@ const renderLiveDirectoryControls = () => {
   if (!visible) return;
   replaceLiveFacetOptions(liveCountrySelect, 'All countries', liveDirectoryFacets.countries || [], activeLiveCountry);
   replaceLiveFacetOptions(liveLanguageSelect, 'All languages', liveDirectoryFacets.languages || [], activeLiveLanguage);
+  liveNowButton.classList.toggle('active', activeLiveWindow === 'now');
+  liveSoonButton.classList.toggle('active', activeLiveWindow === 'soon');
+  liveNowButton.setAttribute('aria-pressed', String(activeLiveWindow === 'now'));
+  liveSoonButton.setAttribute('aria-pressed', String(activeLiveWindow === 'soon'));
+  const activeFilter = watchBrowseApi.getFilter(activeSubcategory, activeWatchFilter);
+  const sourceLabel = activeFilter?.source === 'free-events'
+    ? 'official free-event feeds'
+    : 'the current IPTV-org directory and Harbor stream-health filters';
   liveDirectoryStatus.textContent = watchBrowseLoading
-    ? 'Checking the current IPTV-org directory and Harbor stream-health filters…'
-    : Math.max(liveDirectoryTotal, watchBrowseItems.length) + ' compatible channels'
+    ? 'Checking ' + sourceLabel + '…'
+    : activeLiveWindow === 'soon'
+      ? Math.max(liveDirectoryTotal, watchBrowseItems.length) + ' upcoming listings · later today and the next seven days'
+      : Math.max(liveDirectoryTotal, watchBrowseItems.length) + ' channels live now'
       + (liveDirectoryCached ? ' · showing the last successful catalog snapshot' : ' · unsafe and unsupported streams removed');
 };
 
@@ -1577,6 +1595,7 @@ const renderCategories = () => {
       if (activeSubcategory !== category) {
         activeLiveCountry = '';
         activeLiveLanguage = '';
+        activeLiveWindow = 'now';
         liveDirectoryFacets = { countries: [], languages: [], sports: [] };
         liveDirectoryTotal = 0;
         liveDirectoryCached = false;
@@ -1609,6 +1628,7 @@ const setActiveSection = (category) => {
   activeWatchFilter = '';
   activeLiveCountry = '';
   activeLiveLanguage = '';
+  activeLiveWindow = 'now';
   liveDirectoryFacets = { countries: [], languages: [], sports: [] };
   liveDirectoryTotal = 0;
   liveDirectoryCached = false;
@@ -1966,7 +1986,14 @@ const loadLiveGuide = async (item) => {
   const generation = ++liveGuideGeneration;
   const guideNow = new Date();
   resetLiveGuide();
-  detailGuideStatus.textContent = 'Checking IPTV-org programme sources…';
+  if (!item.channelId && /^cgtn-/i.test(item.id || '')) {
+    detailGuideStatus.textContent = 'This official event feed does not publish a separate programme guide.';
+    detailGuideNowEmpty.hidden = false;
+    detailGuideTodayEmpty.hidden = false;
+    detailGuideWeekEmpty.hidden = false;
+    return;
+  }
+  detailGuideStatus.textContent = 'Checking published programme sources…';
   const guide = await watchBrowseApi.loadLiveGuide(item.channelId, item.feedId, { limit: 60, horizonDays: 7, now: guideNow });
   if (generation !== liveGuideGeneration || activeMedia !== item || !mediaDetailDialog.open) return;
   if (!guide.programmes?.length) {
@@ -1994,16 +2021,23 @@ const openDetailDialog = async (item) => {
   activeEpisode = Number(storedSelection.episode) || 1;
 
   const isLive = item.type === 'live';
+  const isSeries = item.type === 'tv' || item.type === 'anime';
+  const detailArtwork = item.artworkUrl ? artworkSource(item.artworkUrl) : '';
+  mediaDetailDialog.style.setProperty('--detail-artwork', detailArtwork ? 'url("' + detailArtwork.replace(/"/g, '%22') + '")' : 'none');
+  mediaDetailDialog.classList.toggle('has-artwork', Boolean(detailArtwork));
   detailTitle.textContent = item.name;
   detailSubtitle.textContent = isLive
-    ? ['Live', item.countryFlag, item.countryName, ...(item.languageNames || []), item.streamCandidates?.[0]?.quality].filter(Boolean).join(' · ')
+    ? [item.year || 'Live', item.countryFlag, item.countryName, ...(item.languageNames || []), item.streamCandidates?.[0]?.quality].filter(Boolean).join(' · ')
     : item.year + ' · ★ ' + item.rating + ' · ' + (item.sections || []).join(', ');
   detailOverview.textContent = item.overview;
   syncSaveButton(detailSaveBtn, item);
-  detailPlayBtn.hidden = !isLive;
+  detailPlayBtn.hidden = isSeries;
+  detailPlayBtn.textContent = isLive ? '▶ Watch live' : '▶ Watch';
   detailLiveGuide.hidden = !isLive;
-  if (isLive) {
+  if (!isSeries) {
     detailPlayBtn.onclick = () => void startStreamPlayback(item);
+  }
+  if (isLive) {
     detailGuideStatus.textContent = 'Checking programme data…';
     resetLiveGuide();
   } else {
@@ -2018,7 +2052,6 @@ const openDetailDialog = async (item) => {
     showStatusToast(saved ? 'Added to My List' : 'Removed from My List', item.name);
   };
 
-  const isSeries = item.type === 'tv' || item.type === 'anime';
   detailEpisodesWrap.hidden = !isSeries;
   if (!mediaDetailDialog.open) mediaDetailDialog.showModal();
   if (isLive) void loadLiveGuide(item);
@@ -2094,11 +2127,7 @@ const handleMediaClick = async (item) => {
   }
 
   if (item.category === 'Watch') {
-    if (item.type === 'tv' || item.type === 'anime' || item.type === 'live') {
-      openDetailDialog(item);
-    } else {
-      startStreamPlayback(item);
-    }
+    openDetailDialog(item);
   } else if (item.category === 'Listen') {
     if (item.audioUrl) {
       playAudioStream(item);
@@ -2122,6 +2151,7 @@ const handleMediaClick = async (item) => {
 const buildCard = (item) => {
   const card = createElement('article', 'media-card');
   card.dataset.category = item.category;
+  card.dataset.type = item.type || '';
   card.dataset.external = String(Boolean(item.externalUrl));
   const openButton = createElement('button', 'media-card-open');
   openButton.type = 'button';
@@ -2374,6 +2404,7 @@ const openMyHarbor = (tab = 'list') => {
 const buildRail = (title, items, options = {}) => {
   if (!items.length) return null;
   const section = createElement('section', 'content-rail');
+  if (options.category) section.dataset.category = options.category;
   const heading = createElement('div', 'rail-heading');
   const headingCopy = createElement('div');
   headingCopy.append(createElement('h2', '', title));
@@ -2394,6 +2425,41 @@ const buildRail = (title, items, options = {}) => {
   const itemsWrap = createElement('div', 'rail-items');
   itemsWrap.append(...items.slice(0, options.limit || 12).map(buildCard));
   section.append(heading, itemsWrap);
+  return section;
+};
+
+const HOME_SECTION_CONFIG = [
+  ['Watch', 'Movies, series, anime, sports, and live TV', '▶'],
+  ['Listen', 'Music destinations and listening links', '♪'],
+  ['Read', 'Books, comics, manga, and audiobooks', '▤'],
+  ['Play', 'Games and your installed library', '◆']
+];
+
+const buildHomeSectionGrid = () => {
+  const section = createElement('section', 'home-sections');
+  const heading = createElement('div', 'rail-heading');
+  const headingCopy = createElement('div');
+  headingCopy.append(
+    createElement('h2', '', 'Explore Harbor'),
+    createElement('p', '', 'Choose what kind of experience you want right now')
+  );
+  heading.append(headingCopy);
+  const grid = createElement('div', 'home-section-grid');
+  HOME_SECTION_CONFIG.forEach(([category, description, mark]) => {
+    const button = createElement('button', 'home-section-card');
+    button.type = 'button';
+    button.dataset.category = category;
+    button.setAttribute('aria-label', category + ': ' + description);
+    button.append(
+      createElement('span', 'home-section-mark', mark),
+      createElement('strong', '', category),
+      createElement('small', '', description),
+      createElement('span', 'home-section-arrow', '→')
+    );
+    button.addEventListener('click', () => setActiveSection(category));
+    grid.append(button);
+  });
+  section.append(heading, grid);
   return section;
 };
 
@@ -2443,20 +2509,19 @@ const renderResources = () => {
     }
     rails.push(resultsSection);
   } else if (activeCategory === 'Home') {
-    const popular = [...currentMediaList].sort((a, b) => Number(b.rating) - Number(a.rating));
+    rails.push(buildHomeSectionGrid());
     [
       buildRail('Continue watching', continueEntries().map((entry) => ({ ...entry.item, _resume: entry })), { description: 'Jump back in' }),
       buildRail('My List', userState.favorites, { description: 'Saved for later' }),
-      buildRail('Popular on Harbor', popular, { description: 'A little bit of everything' }),
-      buildRail('Watch tonight', getSectionItems('Watch'), { description: 'Movies, shows, anime, sports, and live TV' }),
-      buildRail('Listen elsewhere', getSectionItems('Listen'), { description: 'Curated music links from YarrList' }),
-      buildRail('Read elsewhere', getSectionItems('Read'), { description: 'Curated manga, comic, and eBook links from YarrList' }),
-      buildRail('Find games', getSectionItems('Play'), { description: 'Curated game links from YarrList' })
+      buildRail('Watch tonight', getSectionItems('Watch'), { category: 'Watch', description: 'Movies, shows, anime, sports, and live TV' }),
+      buildRail('Listen elsewhere', getSectionItems('Listen'), { category: 'Listen', description: 'Curated music links from YarrList' }),
+      buildRail('Read elsewhere', getSectionItems('Read'), { category: 'Read', description: 'Curated manga, comic, and eBook links from YarrList' }),
+      buildRail('Find games', getSectionItems('Play'), { category: 'Play', description: 'Curated game links from YarrList' })
     ].filter(Boolean).forEach((rail) => rails.push(rail));
   } else if (activeSubcategory === 'All') {
     config.subcategories.slice(1).forEach((subcategory) => {
       const items = getSectionItems(activeCategory, subcategory);
-      const rail = buildRail(subcategory, items, { subcategory });
+      const rail = buildRail(subcategory, items, { category: activeCategory, subcategory });
       if (rail) rails.push(rail);
     });
     if (!rails.length) {
@@ -2465,6 +2530,7 @@ const renderResources = () => {
     }
   } else {
     const resultsSection = createElement('section', 'content-rail');
+    resultsSection.dataset.category = activeCategory;
     const heading = createElement('div', 'rail-heading');
     const headingCopy = createElement('div');
     const activeFilter = activeCategory === 'Watch'
@@ -2585,6 +2651,16 @@ liveCountrySelect.addEventListener('change', () => {
 });
 liveLanguageSelect.addEventListener('change', () => {
   activeLiveLanguage = liveLanguageSelect.value;
+  reloadLiveDirectory();
+});
+liveNowButton.addEventListener('click', () => {
+  if (activeLiveWindow === 'now') return;
+  activeLiveWindow = 'now';
+  reloadLiveDirectory();
+});
+liveSoonButton.addEventListener('click', () => {
+  if (activeLiveWindow === 'soon') return;
+  activeLiveWindow = 'soon';
   reloadLiveDirectory();
 });
 

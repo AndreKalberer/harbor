@@ -70,6 +70,10 @@
           <nav id="watch-filter-list" class="watch-filter-list" aria-label="Browse the selected Watch category" hidden></nav>
           <section id="live-directory-controls" class="live-directory-controls" aria-label="Refine public live channels" hidden>
             <div class="live-directory-heading"><span class="dialog-kicker">IPTV-org public channels</span><strong>Refine the live directory</strong></div>
+            <div class="live-window-switch" role="group" aria-label="Choose live timing">
+              <button id="live-now-button" class="active" type="button" aria-pressed="true">● Live Now</button>
+              <button id="live-soon-button" type="button" aria-pressed="false">Live Soon</button>
+            </div>
             <label>Country<select id="live-country-select"><option value="">All countries</option></select></label>
             <label>Language<select id="live-language-select"><option value="">All languages</option></select></label>
             <p id="live-directory-status" role="status" aria-live="polite"></p>

@@ -27,7 +27,8 @@
     'na.linear.zype.com', 'd3b6q2ou5kp8ke.cloudfront.net', 'd3d85c7qkywguj.cloudfront.net',
     'aegis-cloudfront-1.tubi.video', 'lotus.stingray.com', 'shd-gcp-live.edgenextcdn.net',
     'd3qs3d2rkhfqrt.cloudfront.net', 'n18syndication.akamaized.net',
-    'cbcrclinear-tor.akamaized.net', 'cdn-uw2-prod.tsv2.amagi.tv'
+    'cbcrclinear-tor.akamaized.net', 'cdn-uw2-prod.tsv2.amagi.tv',
+    'live-stream.cgtn.com', 'envod.cgtn.com'
   ];
 
   var sportTaxonomy = [
@@ -41,7 +42,8 @@
     { id: 'tennis', label: 'Tennis', terms: ['tennis', 'atp', 'wta'] },
     { id: 'golf', label: 'Golf', terms: ['golf', 'pga'] },
     { id: 'cricket', label: 'Cricket', terms: ['cricket', 'ipl'] },
-    { id: 'rugby', label: 'Rugby', terms: ['rugby'] }
+    { id: 'rugby', label: 'Rugby', terms: ['rugby'] },
+    { id: 'robotics', label: 'Robot Sports', terms: ['robot', 'humanoid'] }
   ];
 
   function normalize(value) {

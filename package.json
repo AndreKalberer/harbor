@@ -1,6 +1,6 @@
 {
   "name": "harbor-desktop",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "A consumer entertainment hub for watching, listening, reading, and playing.",
   "desktopName": "com.harbor.desktop",
   "main": "electron/main.cjs",

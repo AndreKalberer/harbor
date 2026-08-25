@@ -84,7 +84,7 @@ const run = async () => {
     playerFocusable: document.querySelector('#tv-frame').classList.contains('focusable'),
     horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth
   })`);
-  if (shell.nav.length !== 0 || shell.cards < 1 || shell.fallbackOverLoadedImages !== 0 || shell.artworkWithoutFallback !== 0
+  if (shell.nav.join('|') !== 'Home|Watch|Listen' || shell.cards < 1 || shell.fallbackOverLoadedImages !== 0 || shell.artworkWithoutFallback !== 0
       || shell.cardLabels.some((label) => !label || /^[A-Z] (movie|series|anime)/i.test(label))
       || shell.horizontalOverflow || shell.playerSandbox !== null || shell.playerTabIndex !== 0 || !shell.playerFocusable) {
     throw new Error('TV shell regression failed: ' + JSON.stringify(shell));
@@ -98,7 +98,7 @@ const run = async () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
     const downReachedFilter = document.activeElement === document.querySelector('#watch-filter-row .active');
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
-    const downReachedLiveFacet = document.activeElement === document.querySelector('#live-country-select');
+    const downReachedLiveFacet = document.querySelector('#live-filter-row').contains(document.activeElement);
     if (!document.querySelector('#card-grid .media-card')) {
       const fixtureCard = document.createElement('button'); fixtureCard.className = 'media-card focusable'; fixtureCard.type = 'button'; document.querySelector('#card-grid').appendChild(fixtureCard);
     }
@@ -108,9 +108,10 @@ const run = async () => {
     category('Live TV').click();
     const liveFilters = [...document.querySelectorAll('#watch-filter-row button')].map((button) => button.textContent.trim());
     document.querySelector('[data-action="watch"]').click();
-    return { sportsFilters, liveFilters, downReachedFilter, downReachedLiveFacet, downReachedLiveCard };
+    const liveWindows = [...document.querySelectorAll('.live-window-switch button')].map((button) => button.textContent.trim());
+    return { sportsFilters, liveFilters, liveWindows, downReachedFilter, downReachedLiveFacet, downReachedLiveCard };
   })()`);
-  if (watchFilters.sportsFilters.length < 8 || watchFilters.liveFilters.length < 8 || !watchFilters.downReachedFilter || !watchFilters.downReachedLiveFacet || !watchFilters.downReachedLiveCard) {
+  if (watchFilters.sportsFilters.length < 8 || watchFilters.liveFilters.length < 8 || watchFilters.liveWindows.join('|') !== '● Live Now|Live Soon' || !watchFilters.downReachedFilter || !watchFilters.downReachedLiveFacet || !watchFilters.downReachedLiveCard) {
     throw new Error('TV Watch filters or D-pad lane failed: ' + JSON.stringify(watchFilters));
   }
   const liveGuide = await evaluate(`(async () => {
