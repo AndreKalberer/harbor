@@ -36,6 +36,18 @@ const run = async () => {
   };
   await command('Runtime.enable');
   await command('Page.enable');
+  await evaluate(`new Promise((resolve) => {
+    const watch = document.querySelector('[data-action="watch"]');
+    const ready = () => document.activeElement === watch;
+    if (ready()) return resolve();
+    const timeout = setTimeout(resolve, 2000);
+    const timer = setInterval(() => {
+      if (!ready()) return;
+      clearInterval(timer);
+      clearTimeout(timeout);
+      resolve();
+    }, 25);
+  })`);
   await evaluate(`(() => {
     document.querySelector('[data-action="watch"]').click();
     window.scrollTo(0, 0);
