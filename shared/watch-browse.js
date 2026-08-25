@@ -240,6 +240,13 @@
     return liveTvApi.loadGuide(channelId, feedId, options);
   }
 
+  function groupLiveGuide(programmes, now) {
+    if (!liveTvApi || typeof liveTvApi.groupGuideProgrammes !== 'function') {
+      return { liveNow: [], laterToday: [], laterThisWeek: [] };
+    }
+    return liveTvApi.groupGuideProgrammes(programmes, now);
+  }
+
   function markLiveStreamFailure(url, storage) {
     if (liveTvApi && typeof liveTvApi.markStreamFailure === 'function') liveTvApi.markStreamFailure(url, storage);
   }
@@ -259,6 +266,7 @@
     loadLiveChannels: loadLiveChannels,
     loadLiveDirectory: loadLiveDirectory,
     loadLiveGuide: loadLiveGuide,
+    groupLiveGuide: groupLiveGuide,
     markLiveStreamFailure: markLiveStreamFailure,
     markLiveStreamSuccess: markLiveStreamSuccess
   };

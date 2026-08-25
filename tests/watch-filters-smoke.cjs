@@ -64,7 +64,10 @@ const run = async () => {
         && (!needle || (channel.name + ' ' + channel.countryName + ' ' + channel.languageNames.join(' ')).toLowerCase().includes(needle)));
       return { channels, total: channels.length, cached: false, facets: { countries: [{ code: 'ES', name: 'Spain', flag: '🇪🇸' }, { code: 'US', name: 'United States', flag: '🇺🇸' }], languages: [{ code: 'eng', name: 'English' }, { code: 'spa', name: 'Spanish' }], sports: [] } };
     };
-    watchBrowseApi.loadLiveGuide = async () => ({ status: 'available', provider: 'Harbor fixture', language: 'en', programmes: [{ title: 'Live Basketball', description: 'Fixture guide programme.', start: new Date().toISOString(), stop: new Date(Date.now() + 3600000).toISOString(), current: true }] });
+    watchBrowseApi.loadLiveGuide = async () => ({ status: 'available', provider: 'Harbor fixture', language: 'en', programmes: [
+      { title: 'Live Basketball', description: 'Fixture guide programme.', start: new Date(Date.now() - 60000).toISOString(), stop: new Date(Date.now() + 3600000).toISOString(), current: true },
+      { title: 'Basketball Later This Week', start: new Date(Date.now() + 172800000).toISOString(), stop: new Date(Date.now() + 176400000).toISOString(), current: false }
+    ] });
     const category = (name) => [...document.querySelectorAll('.category-button')]
       .find((button) => button.querySelector('.category-name')?.textContent === name);
     const filterLabels = () => [...document.querySelectorAll('#watch-filter-list button')].map((button) => button.textContent.trim());
@@ -106,7 +109,7 @@ const run = async () => {
     };
     document.querySelector('#resource-list .media-card-open').click();
     await new Promise((resolve) => setTimeout(resolve, 40));
-    liveControls.guide = [...document.querySelectorAll('#detail-guide-list strong')].map((node) => node.textContent.trim());
+    liveControls.guide = [...document.querySelectorAll('.detail-guide-list strong')].map((node) => node.textContent.trim());
     document.querySelector('#close-detail-dialog-btn').click();
     query = ''; searchInput.value = '';
     category('Live TV').click();
@@ -120,7 +123,7 @@ const run = async () => {
   if (result.movies.labels.length < 8 || result.movies.active !== 'Popular' || result.movies.hidden
       || result.horror.active !== 'Horror' || result.sports.length < 8 || result.liveTv.length < 8
       || !result.liveControls.visible || result.liveControls.countries < 3 || result.liveControls.languages < 3
-      || result.liveControls.cards.join('|') !== 'NBA Basketball' || result.liveControls.guide.join('|') !== 'Live Basketball'
+      || result.liveControls.cards.join('|') !== 'NBA Basketball' || result.liveControls.guide.join('|') !== 'Live Basketball|Basketball Later This Week'
       || !result.liveControls.status.includes('compatible channels') || !result.hlsLoaded) {
     throw new Error('Desktop Watch filter regression failed: ' + JSON.stringify(result));
   }

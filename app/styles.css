@@ -815,12 +815,23 @@ dialog::backdrop { background: rgba(3, 1, 7, 0.82); backdrop-filter: blur(8px); 
 .detail-guide-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; }
 .detail-guide-heading h3 { margin: 0; font-size: 16px; }
 .detail-live-guide > p { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+.detail-guide-groups { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 16px; margin-top: 15px; }
+.detail-guide-group { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255, 255, 255, 0.025); }
+.detail-guide-group h4 { margin: 0; font-size: 14px; }
+.detail-guide-period { margin-top: 13px; }
+.detail-guide-period:first-of-type { margin-top: 10px; }
+.detail-guide-period h5 { margin: 0; color: #bca8ed; font: 800 9px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.detail-guide-empty { margin: 9px 0 0; color: var(--muted); font-size: 11px; }
 .detail-guide-list { display: grid; gap: 8px; margin: 13px 0 0; padding: 0; list-style: none; }
-.detail-guide-list li { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 12px; padding-top: 9px; border-top: 1px solid var(--line); }
+.detail-guide-list li { display: grid; grid-template-columns: minmax(90px, 0.42fr) minmax(0, 1fr); gap: 12px; padding-top: 9px; border-top: 1px solid var(--line); }
 .detail-guide-list time { color: #bca8ed; font: 700 10px/1.4 var(--mono); }
 .detail-guide-list strong { display: block; font-size: 13px; }
 .detail-guide-list p { margin: 3px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .detail-guide-list li.current strong::after { content: ' ON NOW'; margin-left: 7px; color: var(--coral); font: 800 8px/1 var(--mono); letter-spacing: 0.08em; }
+
+@media (max-width: 760px) {
+  .detail-guide-groups { grid-template-columns: 1fr; }
+}
 
 .detail-episodes-wrap { margin-top: 24px; }
 .episodes-select-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }

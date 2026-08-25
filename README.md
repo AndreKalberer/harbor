@@ -4,7 +4,7 @@ Harbor is a cinematic entertainment hub for Windows, macOS, Linux, and TVs. Home
 
 Watch includes movies, television, anime, sports, and live TV. Listen includes music, soundtracks, radio, podcasts, and audiobooks. Read includes books, comics, manga, and light novels. Play browses games and can reopen installed titles without exposing their paths to the page.
 
-Sports and Live TV use IPTV-org's public playlists inside Harbor's native HLS/video player. Category and sport chips can be combined with country, language, and scoped search filters. Harbor rejects non-HTTPS, adult, blocked, header-dependent, duplicate, and unsupported stream formats; groups alternate feeds by channel; and temporarily quarantines feeds after repeated playback failures. Favorites remain on the device. Programme-guide listings appear when IPTV-org publishes a current XMLTV source for the selected channel; most channels currently show an honest schedule-unavailable state while remaining playable.
+Sports and Live TV use IPTV-org's public playlists inside Harbor's native HLS/video player. Category and sport chips can be combined with country, language, and scoped search filters. Harbor rejects non-HTTPS, adult, blocked, header-dependent, duplicate, and unsupported stream formats; groups alternate feeds by channel; and temporarily quarantines feeds after repeated playback failures. Favorites remain on the device. When IPTV-org publishes XMLTV data for a selected channel, its guide shows only **Live Now** and **Coming Up**, with future listings grouped into **Later today** and **Later this week** across a seven-day window. Most channels currently show an honest schedule-unavailable state while remaining playable.
 
 ## Downloading
 

@@ -11,6 +11,7 @@ Preserve unrelated changes in the dirty worktree and treat desktop pointer/keybo
 2. Define one canonical behavior and vocabulary for both surfaces. Adapt layout and focus mechanics to each device instead of forking the underlying meaning.
    - For public live-catalog integrations, normalize upstream metadata into a shared Harbor model; validate URL schemes and stream formats; reject missing, blocked, unsafe, duplicate, or stale entries; and cache the last successful catalog so upstream outages do not erase the UI.
    - Treat guide data as optional and freshness-bounded. A playable channel must remain discoverable when current programme data is unavailable.
+   - Present live schedules consistently across desktop and TV: separate the current programme from upcoming entries, group future listings into same-day and seven-day windows, and never manufacture schedule data when the upstream guide is sparse.
 3. Keep TV actions reachable with arrows, OK/Enter, and Back; keep desktop actions usable by pointer and keyboard. Avoid focus targets that remain active while hidden.
 4. Add regression coverage for shared taxonomy or state logic and client-specific checks for rendered controls and labels. Run `npm test` plus the relevant smoke or harness checks.
 5. Follow `ship-harbor-tv` for TV packaging or device installation and `package-electron-releases` for desktop versioning, packaging, installation, shortcut verification, and launch testing.

@@ -469,12 +469,13 @@
     return new Date(utc - offset);
   }
 
-  function parseXmlTv(text, channelKey, now, limit) {
+  function parseXmlTv(text, channelKey, now, limit, horizonDays) {
     var programmes = [];
     var pattern = /<programme\b([^>]*)>([\s\S]*?)<\/programme>/gi;
     var match;
     var timestamp = now instanceof Date ? now.getTime() : Number(now) || Date.now();
-    var horizon = timestamp + 24 * 60 * 60 * 1000;
+    var days = Math.max(1, Math.min(7, Number(horizonDays) || 1));
+    var horizon = timestamp + days * 24 * 60 * 60 * 1000;
     while ((match = pattern.exec(String(text || '')))) {
       var attributes = readAttributes('<programme ' + match[1] + '>');
       if (channelKey && attributes.channel !== channelKey) continue;
@@ -493,6 +494,22 @@
     }
     programmes.sort(function (left, right) { return new Date(left.start) - new Date(right.start); });
     return programmes.slice(0, Number(limit) || 5);
+  }
+
+  function groupGuideProgrammes(programmes, now) {
+    var timestamp = now instanceof Date ? now.getTime() : Number(now) || Date.now();
+    var nextDay = new Date(timestamp);
+    nextDay.setHours(24, 0, 0, 0);
+    var nextDayTimestamp = nextDay.getTime();
+    return (Array.isArray(programmes) ? programmes : []).reduce(function (groups, programme) {
+      var start = new Date(programme && programme.start).getTime();
+      var stop = new Date(programme && programme.stop).getTime();
+      if (!Number.isFinite(start) || !Number.isFinite(stop) || stop <= timestamp) return groups;
+      if ((start <= timestamp && stop > timestamp) || programme.current) groups.liveNow.push(programme);
+      else if (start < nextDayTimestamp) groups.laterToday.push(programme);
+      else groups.laterThisWeek.push(programme);
+      return groups;
+    }, { liveNow: [], laterToday: [], laterThisWeek: [] });
   }
 
   function loadGuideIndex() {
@@ -538,7 +555,7 @@
         guideDocumentCache[guide.sourceUrl] = requestPromise;
       }
       return requestPromise.then(function (text) {
-        var programmes = parseXmlTv(text, key, settings.now, settings.limit || 5);
+        var programmes = parseXmlTv(text, key, settings.now, settings.limit || 60, settings.horizonDays || 7);
         return {
           status: programmes.length ? 'available' : 'empty',
           provider: guide.siteName || guide.site,
@@ -570,6 +587,7 @@
     isQuarantined: isQuarantined,
     parseXmlTvDate: parseXmlTvDate,
     parseXmlTv: parseXmlTv,
+    groupGuideProgrammes: groupGuideProgrammes,
     loadGuide: loadGuide
   });
 }));

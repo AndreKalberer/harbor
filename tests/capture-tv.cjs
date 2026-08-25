@@ -115,18 +115,21 @@ const run = async () => {
   }
   const liveGuide = await evaluate(`(async () => {
     const original = window.HarborWatchBrowse.loadLiveGuide;
-    window.HarborWatchBrowse.loadLiveGuide = () => Promise.resolve({ status: 'available', provider: 'Harbor fixture', language: 'en', programmes: [{ title: 'Live Match', description: 'TV guide fixture.', start: new Date().toISOString(), stop: new Date(Date.now() + 3600000).toISOString(), current: true }] });
+    window.HarborWatchBrowse.loadLiveGuide = () => Promise.resolve({ status: 'available', provider: 'Harbor fixture', language: 'en', programmes: [
+      { title: 'Live Match', description: 'TV guide fixture.', start: new Date(Date.now() - 60000).toISOString(), stop: new Date(Date.now() + 3600000).toISOString(), current: true },
+      { title: 'Match Later This Week', start: new Date(Date.now() + 172800000).toISOString(), stop: new Date(Date.now() + 176400000).toISOString(), current: false }
+    ] });
     document.querySelector('[data-action="watch"]').click();
     await new Promise((resolve) => setTimeout(resolve, 60));
     const liveCard = [...document.querySelectorAll('#card-grid .media-card')].find((card) => card.querySelector('h3')?.textContent === 'World Sports HD');
     liveCard.click();
     await new Promise((resolve) => setTimeout(resolve, 40));
-    const result = { visible: !document.querySelector('#detail-live-guide').hidden, programmes: [...document.querySelectorAll('#detail-guide-list strong')].map((node) => node.textContent.trim()), playVisible: !document.querySelector('#detail-play').hidden };
+    const result = { visible: !document.querySelector('#detail-live-guide').hidden, programmes: [...document.querySelectorAll('.detail-live-guide strong')].map((node) => node.textContent.trim()), playVisible: !document.querySelector('#detail-play').hidden };
     document.querySelector('[data-close="detail"]').click();
     window.HarborWatchBrowse.loadLiveGuide = original;
     return result;
   })()`);
-  if (!liveGuide.visible || !liveGuide.playVisible || liveGuide.programmes.join('|') !== 'Live Match') {
+  if (!liveGuide.visible || !liveGuide.playVisible || liveGuide.programmes.join('|') !== 'Live Match|Match Later This Week') {
     throw new Error('TV live guide detail failed: ' + JSON.stringify(liveGuide));
   }
   const searchNavigation = await evaluate(`(() => {

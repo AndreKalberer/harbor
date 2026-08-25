@@ -128,9 +128,20 @@
       <div class="detail-dialog-body">
         <p id="detail-overview" class="detail-overview"></p>
         <section id="detail-live-guide" class="detail-live-guide" aria-labelledby="detail-guide-title" hidden>
-          <div class="detail-guide-heading"><span class="dialog-kicker">Live guide</span><h3 id="detail-guide-title">On now and next</h3></div>
+          <div class="detail-guide-heading"><span class="dialog-kicker">Live schedule</span><h3 id="detail-guide-title">Live Now &amp; Coming Up</h3></div>
           <p id="detail-guide-status" role="status" aria-live="polite">Checking programme data…</p>
-          <ol id="detail-guide-list" class="detail-guide-list"></ol>
+          <div class="detail-guide-groups">
+            <section class="detail-guide-group" aria-labelledby="detail-guide-now-title">
+              <h4 id="detail-guide-now-title">Live Now</h4>
+              <ol id="detail-guide-now-list" class="detail-guide-list"></ol>
+              <p id="detail-guide-now-empty" class="detail-guide-empty" hidden>No current listing is available.</p>
+            </section>
+            <section class="detail-guide-group" aria-labelledby="detail-guide-upcoming-title">
+              <h4 id="detail-guide-upcoming-title">Coming Up</h4>
+              <div class="detail-guide-period"><h5>Later today</h5><ol id="detail-guide-today-list" class="detail-guide-list"></ol><p id="detail-guide-today-empty" class="detail-guide-empty" hidden>No more listings today.</p></div>
+              <div class="detail-guide-period"><h5>Later this week</h5><ol id="detail-guide-week-list" class="detail-guide-list"></ol><p id="detail-guide-week-empty" class="detail-guide-empty" hidden>No later listings are published.</p></div>
+            </section>
+          </div>
         </section>
         <div id="detail-episodes-wrap" class="detail-episodes-wrap" hidden>
           <div class="episodes-select-row">

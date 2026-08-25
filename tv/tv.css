@@ -78,8 +78,14 @@ h1 { max-width: 880px; margin: 0; font-size: 82px; font-size: clamp(64px, 5.4vw,
 .detail-live-guide { margin-top: 28px; padding: 24px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255, 255, 255, 0.045); }
 .detail-live-guide h3 { margin: 0; font-size: 30px; }
 .detail-live-guide > p:not(.eyebrow) { margin: 12px 0 0; color: var(--muted); font-size: 18px; }
+.detail-guide-groups { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 22px; margin-top: 22px; }
+.detail-guide-group { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255, 255, 255, 0.035); }
+.detail-guide-group h4 { margin: 0; font-size: 25px; }
+.detail-guide-period { margin-top: 20px; }
+.detail-guide-period h5 { margin: 0; color: #cbb6ff; font-size: 15px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+.detail-guide-empty { margin: 12px 0 0 !important; color: var(--muted); font-size: 17px !important; }
 .detail-live-guide ol { display: grid; gap: 12px; margin: 18px 0 0; padding: 0; list-style: none; }
-.detail-live-guide li { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 20px; padding-top: 13px; border-top: 1px solid var(--line); }
+.detail-live-guide li { display: grid; grid-template-columns: minmax(170px, 0.45fr) minmax(0, 1fr); gap: 20px; padding-top: 13px; border-top: 1px solid var(--line); }
 .detail-live-guide time { color: #cbb6ff; font-size: 17px; font-weight: 800; }
 .detail-live-guide strong { display: block; font-size: 21px; }
 .detail-live-guide li p { margin: 4px 0 0; color: var(--muted); font-size: 17px; line-height: 1.4; }

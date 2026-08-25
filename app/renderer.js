@@ -46,7 +46,12 @@ const detailSubtitle = document.querySelector('#detail-subtitle');
 const detailOverview = document.querySelector('#detail-overview');
 const detailLiveGuide = document.querySelector('#detail-live-guide');
 const detailGuideStatus = document.querySelector('#detail-guide-status');
-const detailGuideList = document.querySelector('#detail-guide-list');
+const detailGuideNowList = document.querySelector('#detail-guide-now-list');
+const detailGuideTodayList = document.querySelector('#detail-guide-today-list');
+const detailGuideWeekList = document.querySelector('#detail-guide-week-list');
+const detailGuideNowEmpty = document.querySelector('#detail-guide-now-empty');
+const detailGuideTodayEmpty = document.querySelector('#detail-guide-today-empty');
+const detailGuideWeekEmpty = document.querySelector('#detail-guide-week-empty');
 const detailEpisodesWrap = document.querySelector('#detail-episodes-wrap');
 const detailSeasonSelect = document.querySelector('#detail-season-select');
 const detailSeasonRow = detailSeasonSelect.closest('.episodes-select-row');
@@ -1928,29 +1933,53 @@ const playAudioStream = (item) => {
 
 const formatGuideClock = (value) => new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(value));
 
+const resetLiveGuide = () => {
+  detailGuideNowList.replaceChildren();
+  detailGuideTodayList.replaceChildren();
+  detailGuideWeekList.replaceChildren();
+  detailGuideNowEmpty.hidden = true;
+  detailGuideTodayEmpty.hidden = true;
+  detailGuideWeekEmpty.hidden = true;
+};
+
+const createGuideProgramme = (programme, includeDay = false) => {
+  const itemElement = document.createElement('li');
+  itemElement.classList.toggle('current', Boolean(programme.current));
+  const time = document.createElement('time');
+  time.dateTime = programme.start;
+  const day = includeDay
+    ? new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(programme.start)) + ' · '
+    : '';
+  time.textContent = day + formatGuideClock(programme.start) + '–' + formatGuideClock(programme.stop);
+  const copy = document.createElement('div');
+  copy.append(createElement('strong', '', programme.title));
+  if (programme.description) copy.append(createElement('p', '', programme.description));
+  itemElement.append(time, copy);
+  return itemElement;
+};
+
 const loadLiveGuide = async (item) => {
   const generation = ++liveGuideGeneration;
-  detailGuideList.replaceChildren();
+  const guideNow = new Date();
+  resetLiveGuide();
   detailGuideStatus.textContent = 'Checking IPTV-org programme sources…';
-  const guide = await watchBrowseApi.loadLiveGuide(item.channelId, item.feedId, { limit: 5 });
+  const guide = await watchBrowseApi.loadLiveGuide(item.channelId, item.feedId, { limit: 60, horizonDays: 7, now: guideNow });
   if (generation !== liveGuideGeneration || activeMedia !== item || !mediaDetailDialog.open) return;
   if (!guide.programmes?.length) {
-    detailGuideStatus.textContent = 'A current programme schedule is not published for this channel. Live playback is still available.';
+    detailGuideStatus.textContent = 'A schedule is not published for this channel. Live playback is still available.';
+    detailGuideNowEmpty.hidden = false;
+    detailGuideTodayEmpty.hidden = false;
+    detailGuideWeekEmpty.hidden = false;
     return;
   }
+  const groups = watchBrowseApi.groupLiveGuide(guide.programmes, guideNow);
   detailGuideStatus.textContent = [guide.provider ? 'Listings from ' + guide.provider : '', guide.language ? guide.language.toUpperCase() : ''].filter(Boolean).join(' · ');
-  detailGuideList.append(...guide.programmes.map((programme) => {
-    const itemElement = document.createElement('li');
-    itemElement.classList.toggle('current', Boolean(programme.current));
-    const time = document.createElement('time');
-    time.dateTime = programme.start;
-    time.textContent = formatGuideClock(programme.start) + '–' + formatGuideClock(programme.stop);
-    const copy = document.createElement('div');
-    copy.append(createElement('strong', '', programme.title));
-    if (programme.description) copy.append(createElement('p', '', programme.description));
-    itemElement.append(time, copy);
-    return itemElement;
-  }));
+  detailGuideNowList.append(...groups.liveNow.map((programme) => createGuideProgramme(programme)));
+  detailGuideTodayList.append(...groups.laterToday.map((programme) => createGuideProgramme(programme)));
+  detailGuideWeekList.append(...groups.laterThisWeek.map((programme) => createGuideProgramme(programme, true)));
+  detailGuideNowEmpty.hidden = groups.liveNow.length > 0;
+  detailGuideTodayEmpty.hidden = groups.laterToday.length > 0;
+  detailGuideWeekEmpty.hidden = groups.laterThisWeek.length > 0;
 };
 
 // Media Detail Dialog (Episodes, live guide, and sources)
@@ -1972,7 +2001,7 @@ const openDetailDialog = async (item) => {
   if (isLive) {
     detailPlayBtn.onclick = () => void startStreamPlayback(item);
     detailGuideStatus.textContent = 'Checking programme data…';
-    detailGuideList.replaceChildren();
+    resetLiveGuide();
   } else {
     liveGuideGeneration++;
   }

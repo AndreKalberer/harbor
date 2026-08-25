@@ -70,13 +70,20 @@ assert.equal(liveTv.isQuarantined(channels[0].streams[0].url, liveTv.streamHealt
 const xml = `<?xml version="1.0"?><tv>
 <programme start="20260824120000 +0000" stop="20260824130000 +0000" channel="ACCDigitalNetwork.us@SD"><title>Live Match &amp; Analysis</title><desc>First game.</desc></programme>
 <programme start="20260824130000 +0000" stop="20260824140000 +0000" channel="ACCDigitalNetwork.us@SD"><title>Next Match</title></programme>
+<programme start="20260826130000 +0000" stop="20260826140000 +0000" channel="ACCDigitalNetwork.us@SD"><title>Midweek Match</title></programme>
+<programme start="20260902130000 +0000" stop="20260902140000 +0000" channel="ACCDigitalNetwork.us@SD"><title>Outside Guide Window</title></programme>
 <programme start="20260824120000 +0000" stop="20260824130000 +0000" channel="Other.us@SD"><title>Wrong channel</title></programme>
 </tv>`;
-const guide = liveTv.parseXmlTv(xml, 'ACCDigitalNetwork.us@SD', new Date('2026-08-24T12:30:00Z'), 5);
-assert.equal(guide.length, 2);
+const guideNow = new Date('2026-08-24T12:30:00Z');
+const guide = liveTv.parseXmlTv(xml, 'ACCDigitalNetwork.us@SD', guideNow, 10, 7);
+assert.equal(guide.length, 3);
 assert.equal(guide[0].current, true);
 assert.equal(guide[0].title, 'Live Match & Analysis');
 assert.equal(guide[1].current, false);
+const guideGroups = liveTv.groupGuideProgrammes(guide, guideNow);
+assert.deepEqual(guideGroups.liveNow.map((entry) => entry.title), ['Live Match & Analysis']);
+assert.deepEqual(guideGroups.laterToday.map((entry) => entry.title), ['Next Match']);
+assert.deepEqual(guideGroups.laterThisWeek.map((entry) => entry.title), ['Midweek Match']);
 assert.equal(liveTv.parseXmlTvDate('20260824120000 +0200').toISOString(), '2026-08-24T10:00:00.000Z');
 
-process.stdout.write(JSON.stringify({ parsedStreams: parsed.length, groupedChannels: channels.length, guidePrograms: guide.length }) + '\n');
+process.stdout.write(JSON.stringify({ parsedStreams: parsed.length, groupedChannels: channels.length, guidePrograms: guide.length, guideGroups: Object.fromEntries(Object.entries(guideGroups).map(([key, entries]) => [key, entries.length])) }) + '\n');

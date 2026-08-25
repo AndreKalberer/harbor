@@ -93,7 +93,12 @@
   var detailSummary = document.getElementById('detail-summary');
   var detailLiveGuide = document.getElementById('detail-live-guide');
   var detailGuideStatus = document.getElementById('detail-guide-status');
-  var detailGuideList = document.getElementById('detail-guide-list');
+  var detailGuideNowList = document.getElementById('detail-guide-now-list');
+  var detailGuideTodayList = document.getElementById('detail-guide-today-list');
+  var detailGuideWeekList = document.getElementById('detail-guide-week-list');
+  var detailGuideNowEmpty = document.getElementById('detail-guide-now-empty');
+  var detailGuideTodayEmpty = document.getElementById('detail-guide-today-empty');
+  var detailGuideWeekEmpty = document.getElementById('detail-guide-week-empty');
   var detailPlay = document.getElementById('detail-play');
   var detailSave = document.getElementById('detail-save');
   var episodeBrowser = document.getElementById('episode-browser');
@@ -657,26 +662,50 @@
     return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(value));
   }
 
+  function resetLiveGuide() {
+    detailGuideNowList.innerHTML = '';
+    detailGuideTodayList.innerHTML = '';
+    detailGuideWeekList.innerHTML = '';
+    detailGuideNowEmpty.hidden = true;
+    detailGuideTodayEmpty.hidden = true;
+    detailGuideWeekEmpty.hidden = true;
+  }
+
+  function appendGuideProgramme(list, programme, includeDay) {
+    var row = document.createElement('li');
+    if (programme.current) row.className = 'current';
+    var time = document.createElement('time');
+    time.dateTime = programme.start;
+    var day = includeDay ? new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(programme.start)) + ' · ' : '';
+    time.textContent = day + formatGuideClock(programme.start) + '–' + formatGuideClock(programme.stop);
+    var copy = document.createElement('div');
+    var title = document.createElement('strong'); title.textContent = programme.title; copy.appendChild(title);
+    if (programme.description) { var summary = document.createElement('p'); summary.textContent = programme.description; copy.appendChild(summary); }
+    row.appendChild(time); row.appendChild(copy); list.appendChild(row);
+  }
+
   function loadLiveGuide(item) {
     var generation = ++liveGuideGeneration;
-    detailGuideList.innerHTML = '';
+    var guideNow = new Date();
+    resetLiveGuide();
     detailGuideStatus.textContent = 'Checking IPTV-org programme sources…';
-    watchBrowseApi.loadLiveGuide(item.channelId, item.feedId, { limit: 5 }).then(function (guide) {
+    watchBrowseApi.loadLiveGuide(item.channelId, item.feedId, { limit: 60, horizonDays: 7, now: guideNow }).then(function (guide) {
       if (generation !== liveGuideGeneration || !state.active || state.active.id !== item.id || detailPanel.hidden) return;
       if (!guide.programmes || !guide.programmes.length) {
-        detailGuideStatus.textContent = 'A current schedule is not published for this channel. Live playback is still available.';
+        detailGuideStatus.textContent = 'A schedule is not published for this channel. Live playback is still available.';
+        detailGuideNowEmpty.hidden = false;
+        detailGuideTodayEmpty.hidden = false;
+        detailGuideWeekEmpty.hidden = false;
         return;
       }
+      var groups = watchBrowseApi.groupLiveGuide(guide.programmes, guideNow);
       detailGuideStatus.textContent = [guide.provider ? 'Listings from ' + guide.provider : '', guide.language ? guide.language.toUpperCase() : ''].filter(Boolean).join(' · ');
-      guide.programmes.forEach(function (programme) {
-        var row = document.createElement('li');
-        if (programme.current) row.className = 'current';
-        var time = document.createElement('time'); time.dateTime = programme.start; time.textContent = formatGuideClock(programme.start) + '–' + formatGuideClock(programme.stop);
-        var copy = document.createElement('div');
-        var title = document.createElement('strong'); title.textContent = programme.title; copy.appendChild(title);
-        if (programme.description) { var summary = document.createElement('p'); summary.textContent = programme.description; copy.appendChild(summary); }
-        row.appendChild(time); row.appendChild(copy); detailGuideList.appendChild(row);
-      });
+      groups.liveNow.forEach(function (programme) { appendGuideProgramme(detailGuideNowList, programme, false); });
+      groups.laterToday.forEach(function (programme) { appendGuideProgramme(detailGuideTodayList, programme, false); });
+      groups.laterThisWeek.forEach(function (programme) { appendGuideProgramme(detailGuideWeekList, programme, true); });
+      detailGuideNowEmpty.hidden = groups.liveNow.length > 0;
+      detailGuideTodayEmpty.hidden = groups.laterToday.length > 0;
+      detailGuideWeekEmpty.hidden = groups.laterThisWeek.length > 0;
     });
   }
 
