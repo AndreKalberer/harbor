@@ -298,9 +298,13 @@
             <h2 id="update-title" tabindex="-1">Harbor</h2>
           </div>
         </div>
-        <p>Get official Harbor releases, then let Harbor validate the installer before it opens.</p>
+        <p>Harbor checks the Stable channel for official releases. You choose when to download and restart—updates never interrupt playback.</p>
         <p class="update-channel">Release channel: <strong>Stable</strong></p>
         <p id="update-status" class="update-status" aria-live="polite">Checking version…</p>
+        <div id="update-progress-wrap" class="update-progress-wrap" hidden>
+          <progress id="update-progress" max="100" value="0" aria-label="Update download progress"></progress>
+          <span id="update-progress-label">0%</span>
+        </div>
         <div class="about-trust-grid">
           <section>
             <h3>Privacy</h3>
@@ -329,7 +333,8 @@
         <div class="dialog-actions">
           <button class="button-secondary" value="cancel">Close</button>
           <button id="release-page-button" class="button-secondary" type="button">Open downloads</button>
-          <button id="choose-update-button" class="button-primary" type="button">Install downloaded update</button>
+          <button id="choose-update-button" class="button-secondary" type="button">Use downloaded installer</button>
+          <button id="update-action-button" class="button-primary" type="button" disabled>Checking…</button>
         </div>
       </form>
     </dialog>

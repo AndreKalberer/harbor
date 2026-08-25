@@ -47,6 +47,7 @@ assert(packageJson.build?.appId === 'com.harbor.desktop', 'The legacy HarborList
 assert(packageJson.build?.productName === 'Harbor', 'Packaged product name must be Harbor.');
 assert(packageJson.repository?.url === 'https://github.com/AndreKalberer/harbor.git', 'Release repository is not configured.');
 assert(packageJson.dependencies?.['hls.js'], 'Live TV playback is missing its packaged HLS runtime.');
+assert(packageJson.dependencies?.['electron-updater'], 'The installed desktop app is missing its one-click update runtime.');
 
 assert(main.includes('contextIsolation: true'), 'Electron context isolation is not enabled.');
 assert(main.includes('nodeIntegration: false'), 'Electron node integration is not disabled.');
@@ -59,6 +60,7 @@ assert(preload.includes('contextBridge.exposeInMainWorld'), 'The isolated Harbor
 assert(preload.includes('getDirectoryLinks') && preload.includes('openDirectoryLink'), 'The desktop link directory bridge is missing.');
 assert(preload.includes('exportUserData') && preload.includes('importUserData'), 'The desktop data backup bridge is missing.');
 assert(preload.includes('checkForUpdates'), 'The desktop stable update check bridge is missing.');
+assert(preload.includes('downloadUpdate') && preload.includes('installUpdate') && preload.includes('onUpdateState'), 'The isolated one-click update bridge is incomplete.');
 assert(preload.includes('getDiagnostics') && preload.includes('copyDiagnostics') && preload.includes('openTrustedPage'), 'Desktop support and diagnostics bridges are missing.');
 assert(main.includes("ipcMain.handle('harbor:get-directory-links'") && main.includes("ipcMain.handle('harbor:open-directory-link'"), 'The desktop link directory handlers are missing.');
 assert(main.includes("ipcMain.handle('harbor:export-user-data'") && main.includes("ipcMain.handle('harbor:import-user-data'"), 'The desktop data backup handlers are missing.');
@@ -84,6 +86,10 @@ assert(artworkCache.includes("host === 'image.tmdb.org'") && artworkCache.includ
 assert(main.includes("protocol.handle('harbor-artwork'") && main.includes('artworkCacheMaxTotalBytes'), 'The bounded desktop artwork cache is missing.');
 assert(releaseChannel.includes("channel: 'stable'") && releaseChannel.includes('compareVersions'), 'Stable release-channel comparison is missing.');
 assert(main.includes("ipcMain.handle('harbor:check-for-updates'") && main.includes('latestReleaseApiUrl'), 'Official update discovery is missing.');
+assert(main.includes("require('electron-updater')") && main.includes('autoUpdater.autoDownload = false'), 'Desktop updates are not user-controlled through electron-updater.');
+assert(main.includes("ipcMain.handle('harbor:download-update'") && main.includes("ipcMain.handle('harbor:install-update'") && main.includes('quitAndInstall(false, true)'), 'One-click download or restart-to-install is missing.');
+assert(appHtml.includes('id="update-action-button"') && appHtml.includes('id="update-progress"'), 'The update dialog is missing its download action or progress meter.');
+assert(renderer.includes("'Download update'") && renderer.includes("'Restart and install'"), 'The desktop update UI does not expose download and install states.');
 assert(main.includes("ipcMain.handle('harbor:get-diagnostics'") && main.includes("support: 'https://github.com/AndreKalberer/harbor/issues'"), 'Safe diagnostics or support routing is missing.');
 assert(appHtml.includes('This product uses the TMDB API but is not endorsed or certified by TMDB.'), 'Required TMDB attribution notice is missing.');
 assert(appHtml.includes('id="update-title" tabindex="-1"') && renderer.includes('updateTitle.focus({ preventScroll: true })'), 'About dialog initial focus can scroll past its heading.');

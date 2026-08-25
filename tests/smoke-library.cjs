@@ -68,10 +68,25 @@ const run = async () => {
     version: document.querySelector('#app-version').textContent,
     catalog: document.querySelectorAll('#resource-list .media-card').length,
     jszip: typeof JSZip,
-    bridge: [typeof harbor.chooseGame, typeof harbor.launchGame, typeof harbor.listGames, typeof harbor.launchSavedGame, typeof harbor.removeGame, typeof harbor.exportUserData, typeof harbor.importUserData]
+    bridge: [typeof harbor.chooseGame, typeof harbor.launchGame, typeof harbor.listGames, typeof harbor.launchSavedGame, typeof harbor.removeGame, typeof harbor.exportUserData, typeof harbor.importUserData, typeof harbor.getUpdateState, typeof harbor.downloadUpdate, typeof harbor.installUpdate, typeof harbor.onUpdateState]
   })`);
   if (shell.bridge.some((entry) => entry !== 'function')) {
     throw new Error('The isolated Harbor bridge is incomplete: ' + JSON.stringify(shell.bridge));
+  }
+
+  const updaterUi = await evaluate(`(() => {
+    renderDesktopUpdateState({ status: 'available', currentVersion: '2.2.0', latestVersion: '2.3.0', percent: 0 });
+    const available = { label: updateActionButton.textContent, disabled: updateActionButton.disabled, highlighted: updateButton.classList.contains('update-available') };
+    renderDesktopUpdateState({ status: 'downloading', latestVersion: '2.3.0', percent: 42.4 });
+    const downloading = { label: updateActionButton.textContent, progress: updateProgress.value, visible: !updateProgressWrap.hidden };
+    renderDesktopUpdateState({ status: 'downloaded', latestVersion: '2.3.0', percent: 100 });
+    const downloaded = { label: updateActionButton.textContent, disabled: updateActionButton.disabled };
+    return { available, downloading, downloaded };
+  })()`);
+  if (updaterUi.available.label !== 'Download update' || updaterUi.available.disabled || !updaterUi.available.highlighted
+      || updaterUi.downloading.label !== 'Downloading 42%' || updaterUi.downloading.progress !== 42 || !updaterUi.downloading.visible
+      || updaterUi.downloaded.label !== 'Restart and install' || updaterUi.downloaded.disabled) {
+    throw new Error('Desktop one-click update states failed: ' + JSON.stringify(updaterUi));
   }
 
   const onboarding = await evaluate(`(() => {

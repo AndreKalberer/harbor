@@ -7,6 +7,7 @@ const playbackProviders = require('../shared/playback-providers.js');
 const userStateApi = require('../shared/user-state.js');
 const artworkCacheApi = require('../shared/artwork-cache.js');
 const releaseChannelApi = require('../shared/release-channel.js');
+const { autoUpdater } = require('electron-updater');
 
 protocol.registerSchemesAsPrivileged([{
   scheme: 'harbor-artwork',
@@ -27,6 +28,59 @@ const artworkCacheMaxFileBytes = 8 * 1024 * 1024;
 const artworkCacheMaxTotalBytes = 100 * 1024 * 1024;
 const updateCheckCacheTtlMs = 15 * 60 * 1000;
 let cachedUpdateCheck = null;
+let updaterState = { status: 'idle', currentVersion: app.getVersion(), percent: 0 };
+let updateDownloadPromise = null;
+
+const publicUpdaterState = (value = updaterState) => ({
+  status: value.status,
+  currentVersion: value.currentVersion || app.getVersion(),
+  latestVersion: value.latestVersion || '',
+  percent: Number.isFinite(value.percent) ? Math.max(0, Math.min(100, Math.round(value.percent))) : 0,
+  message: value.message || ''
+});
+
+const publishUpdaterState = (next) => {
+  updaterState = Object.assign({}, updaterState, next);
+  const state = publicUpdaterState();
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) window.webContents.send('harbor:update-state', state);
+  }
+  return state;
+};
+
+const configureAutoUpdater = () => {
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = false;
+  autoUpdater.on('checking-for-update', () => publishUpdaterState({ status: 'checking', message: 'Checking for an official Harbor update…' }));
+  autoUpdater.on('update-available', (info) => publishUpdaterState({ status: 'available', latestVersion: String(info?.version || ''), percent: 0, message: '' }));
+  autoUpdater.on('update-not-available', () => publishUpdaterState({ status: 'current', latestVersion: '', percent: 0, message: '' }));
+  autoUpdater.on('download-progress', (progress) => publishUpdaterState({ status: 'downloading', percent: Number(progress?.percent) || 0, message: '' }));
+  autoUpdater.on('update-downloaded', (info) => publishUpdaterState({ status: 'downloaded', latestVersion: String(info?.version || updaterState.latestVersion || ''), percent: 100, message: '' }));
+  autoUpdater.on('error', () => publishUpdaterState({ status: 'error', message: 'Harbor could not download the update. Check your connection or use Open downloads.' }));
+};
+
+const downloadOfficialUpdate = async () => {
+  if (!app.isPackaged) return publishUpdaterState({ status: 'unavailable', message: 'One-click updates are available in the installed Harbor app.' });
+  if (updaterState.status === 'downloaded') return publicUpdaterState();
+  if (updateDownloadPromise) return updateDownloadPromise;
+  updateDownloadPromise = (async () => {
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      if (!result?.updateInfo || releaseChannelApi.compareVersions(app.getVersion(), result.updateInfo.version) !== -1) {
+        return publishUpdaterState({ status: 'current', latestVersion: '', percent: 0, message: '' });
+      }
+      publishUpdaterState({ status: 'downloading', latestVersion: String(result.updateInfo.version || ''), percent: 0, message: '' });
+      await autoUpdater.downloadUpdate();
+      return publicUpdaterState();
+    } catch {
+      return publishUpdaterState({ status: 'error', message: 'Harbor could not download the update. Check your connection or use Open downloads.' });
+    } finally {
+      updateDownloadPromise = null;
+    }
+  })();
+  return updateDownloadPromise;
+};
 
 const artworkCacheDirectory = () => path.join(app.getPath('userData'), 'artwork-cache');
 
@@ -368,6 +422,7 @@ app.setAboutPanelOptions({
 
 app.whenReady().then(() => {
   app.setAppUserModelId('com.harbor.desktop');
+  configureAutoUpdater();
   ensureWindowsShortcuts();
   pruneArtworkCache();
   protocol.handle('harbor-artwork', artworkResponse);
@@ -401,6 +456,13 @@ app.whenReady().then(() => {
     return { status: 'opened' };
   });
   ipcMain.handle('harbor:check-for-updates', checkForStableUpdate);
+  ipcMain.handle('harbor:get-update-state', () => publicUpdaterState());
+  ipcMain.handle('harbor:download-update', downloadOfficialUpdate);
+  ipcMain.handle('harbor:install-update', () => {
+    if (updaterState.status !== 'downloaded') return { status: 'not-ready' };
+    setImmediate(() => autoUpdater.quitAndInstall(false, true));
+    return { status: 'installing' };
+  });
   ipcMain.handle('harbor:get-directory-links', () => readDirectoryLinks());
   ipcMain.handle('harbor:open-directory-link', async (_event, candidate) => {
     if (typeof candidate !== 'string') return { status: 'invalid' };

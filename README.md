@@ -20,7 +20,7 @@ The workflow refuses to publish a tagged Windows, macOS, or Android release with
 - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` for Apple notarization
 - `ANDROID_KEYSTORE_BASE64`, `ANDROID_STORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` for Android/Fire TV release signing
 
-Harbor keeps updates user-controlled. Open **About and updates**, use **Open downloads**, then select the downloaded release in Harbor. Harbor validates its platform, filename, and SHA-256 hash against the official GitHub release before opening it.
+Harbor keeps updates user-controlled. Installed desktop builds check the Stable GitHub release channel in the background and show **Update available** without interrupting playback. Choose **Download update** to download the signed release inside Harbor, then **Restart and install** when ready. **Open downloads** and the checksum-validated manual installer flow remain available as fallbacks.
 
 The About screen checks the Stable release channel automatically, identifies newer official releases, explains Harbor's privacy boundaries and configured playback providers, and provides privacy-safe device diagnostics for support.
 

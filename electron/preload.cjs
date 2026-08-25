@@ -3,6 +3,15 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('harbor', {
   getVersion: () => ipcRenderer.invoke('harbor:get-version'),
   checkForUpdates: () => ipcRenderer.invoke('harbor:check-for-updates'),
+  getUpdateState: () => ipcRenderer.invoke('harbor:get-update-state'),
+  downloadUpdate: () => ipcRenderer.invoke('harbor:download-update'),
+  installUpdate: () => ipcRenderer.invoke('harbor:install-update'),
+  onUpdateState: (callback) => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('harbor:update-state', listener);
+    return () => ipcRenderer.removeListener('harbor:update-state', listener);
+  },
   getDiagnostics: () => ipcRenderer.invoke('harbor:get-diagnostics'),
   copyDiagnostics: () => ipcRenderer.invoke('harbor:copy-diagnostics'),
   openTrustedPage: (page) => ipcRenderer.invoke('harbor:open-trusted-page', page),

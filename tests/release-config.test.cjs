@@ -16,12 +16,14 @@ const renderer = read('app/renderer.js');
 const main = read('electron/main.cjs');
 const landing = read('index.html');
 const icon = fs.readFileSync(path.join(root, 'assets', 'icon.png'));
+const packageJson = JSON.parse(read('package.json'));
 
 assert(icon.readUInt32BE(16) === 1024 && icon.readUInt32BE(20) === 1024, 'Desktop icon must be a 1024x1024 square.');
 assert(!androidGradle.includes('signingConfigs.getByName("debug")'), 'Android release still uses the debug signing key.');
 assert(androidGradle.includes('HARBOR_ANDROID_KEYSTORE') && androidGradle.includes('harborVersion'), 'Android signing or version propagation is missing.');
 assert(androidGradle.includes('file("../../build/android-assets")'), 'Android assets path does not point to tv/build/android-assets.');
 assert(workflow.includes('Require signing for tagged desktop releases'), 'Tagged desktop releases can still publish unsigned.');
+assert(packageJson.dependencies?.['electron-updater'] && workflow.includes('release/latest.yml'), 'Windows release metadata is not wired to the desktop updater runtime.');
 assert(workflow.includes('WIN_CSC_LINK') && workflow.includes('MAC_CSC_LINK'), 'Windows and macOS do not use separate signing identities.');
 assert(workflow.includes('Android signing credentials are required for a tagged release.'), 'Tagged Android releases do not require a release key.');
 assert(/\n  verify:\r?\n[\s\S]*Validate release tag and package version/.test(workflow), 'Tag/version parity is not enforced by the verify job.');

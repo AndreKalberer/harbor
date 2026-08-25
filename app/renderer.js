@@ -30,6 +30,10 @@ const updateButton = document.querySelector('#update-button');
 const updateDialog = document.querySelector('#update-dialog');
 const updateTitle = document.querySelector('#update-title');
 const chooseUpdateButton = document.querySelector('#choose-update-button');
+const updateActionButton = document.querySelector('#update-action-button');
+const updateProgressWrap = document.querySelector('#update-progress-wrap');
+const updateProgress = document.querySelector('#update-progress');
+const updateProgressLabel = document.querySelector('#update-progress-label');
 const releasePageButton = document.querySelector('#release-page-button');
 const updateStatus = document.querySelector('#update-status');
 const providerDisclosure = document.querySelector('#provider-disclosure');
@@ -2734,6 +2738,48 @@ welcomeMyHarborButton.addEventListener('click', () => {
 
 let lastPlaybackProgressWrite = 0;
 let updateReturnFocus = null;
+let desktopUpdateState = { status: 'idle', currentVersion: '', latestVersion: '', percent: 0, message: '' };
+
+const renderDesktopUpdateState = (nextState) => {
+  desktopUpdateState = { ...desktopUpdateState, ...(nextState || {}) };
+  const state = desktopUpdateState;
+  const percent = Math.max(0, Math.min(100, Math.round(Number(state.percent) || 0)));
+  const version = state.latestVersion ? ` ${state.latestVersion}` : '';
+  updateProgress.value = percent;
+  updateProgressLabel.textContent = `${percent}%`;
+  updateProgressWrap.hidden = state.status !== 'downloading';
+  updateButton.classList.toggle('update-available', ['available', 'downloading', 'downloaded'].includes(state.status));
+
+  if (state.status === 'available') {
+    updateStatus.textContent = `Harbor${version} is available. Download it securely without leaving the app.`;
+    updateActionButton.textContent = 'Download update';
+    updateActionButton.disabled = false;
+  } else if (state.status === 'downloading') {
+    updateStatus.textContent = `Downloading Harbor${version}… You can keep using the app.`;
+    updateActionButton.textContent = `Downloading ${percent}%`;
+    updateActionButton.disabled = true;
+  } else if (state.status === 'downloaded') {
+    updateStatus.textContent = `Harbor${version} is ready. Restart Harbor to finish installing it.`;
+    updateActionButton.textContent = 'Restart and install';
+    updateActionButton.disabled = false;
+  } else if (state.status === 'current') {
+    updateStatus.textContent = `Harbor ${state.currentVersion || ''} is up to date on the Stable channel.`;
+    updateActionButton.textContent = 'Up to date';
+    updateActionButton.disabled = true;
+  } else if (state.status === 'error') {
+    updateStatus.textContent = state.message || 'Harbor could not download the update.';
+    updateActionButton.textContent = 'Try again';
+    updateActionButton.disabled = false;
+  } else if (state.status === 'unavailable') {
+    updateStatus.textContent = state.message || 'One-click updates are available in the installed Harbor app.';
+    updateActionButton.textContent = 'Unavailable';
+    updateActionButton.disabled = true;
+  } else {
+    updateStatus.textContent = state.message || 'Checking the Stable release channel…';
+    updateActionButton.textContent = 'Checking…';
+    updateActionButton.disabled = true;
+  }
+};
 const trackHtmlMediaProgress = (mediaElement) => {
   if (!activeMedia || !Number.isFinite(mediaElement.duration) || mediaElement.duration <= 0) return;
   const now = Date.now();
@@ -2759,28 +2805,47 @@ audioPlayer.addEventListener('ended', () => {
 
 updateButton.addEventListener('click', async () => {
   updateReturnFocus = document.activeElement;
-  updateStatus.textContent = 'Checking the stable release channel…';
+  renderDesktopUpdateState({ status: 'checking', message: 'Checking the Stable release channel…' });
   updateDialog.showModal();
   updateTitle.focus({ preventScroll: true });
-  const [version, release, device] = await Promise.all([
+  const [version, release, device, updater] = await Promise.all([
     window.harbor?.getVersion?.(),
     window.harbor?.checkForUpdates?.(),
-    window.harbor?.getDiagnostics?.()
+    window.harbor?.getDiagnostics?.(),
+    window.harbor?.getUpdateState?.()
   ]);
   if (version) {
     appVersion.textContent = 'Harbor ' + version;
   }
-  if (release?.status === 'checked' && release.updateAvailable) {
-    updateStatus.textContent = `Harbor ${release.latestVersion} is available. Download it, then return here to verify and install it.`;
+  if (['downloading', 'downloaded'].includes(updater?.status)) {
+    renderDesktopUpdateState(updater);
+  } else if (release?.status === 'checked' && release.updateAvailable) {
+    renderDesktopUpdateState({ status: 'available', currentVersion: release.currentVersion, latestVersion: release.latestVersion, percent: 0, message: '' });
   } else if (release?.status === 'checked') {
-    updateStatus.textContent = `Harbor ${release.currentVersion} is up to date on the Stable channel.`;
+    renderDesktopUpdateState({ status: 'current', currentVersion: release.currentVersion, latestVersion: '', percent: 0, message: '' });
   } else {
-    updateStatus.textContent = release?.message || `You are using Harbor ${version || ''}.`;
+    renderDesktopUpdateState({ status: 'error', currentVersion: version || '', message: release?.message || `You are using Harbor ${version || ''}.` });
   }
   if (device) {
     diagnosticSummary.textContent = `Harbor ${device.appVersion} · ${device.platform} ${device.osRelease} · ${device.architecture} · Electron ${device.electronVersion}`;
   }
 });
+
+updateActionButton.addEventListener('click', async () => {
+  if (desktopUpdateState.status === 'downloaded') {
+    updateActionButton.disabled = true;
+    updateActionButton.textContent = 'Restarting…';
+    updateStatus.textContent = 'Closing Harbor and installing the update…';
+    const result = await window.harbor?.installUpdate?.();
+    if (result?.status !== 'installing') renderDesktopUpdateState({ status: 'error', message: 'The update is not ready to install yet.' });
+    return;
+  }
+  renderDesktopUpdateState({ status: 'checking', message: 'Preparing the official Harbor update…' });
+  const result = await window.harbor?.downloadUpdate?.();
+  if (result) renderDesktopUpdateState(result);
+});
+
+window.harbor?.onUpdateState?.((state) => renderDesktopUpdateState(state));
 
 updateDialog.addEventListener('close', () => {
   if (updateReturnFocus?.isConnected) updateReturnFocus.focus();
@@ -2876,8 +2941,15 @@ setTimeout(() => {
     updateButton.classList.add('update-available');
     updateButton.setAttribute('aria-label', `Harbor ${release.latestVersion} is available`);
     updateButton.title = `Harbor ${release.latestVersion} is available`;
+    if (!['downloading', 'downloaded'].includes(desktopUpdateState.status)) {
+      renderDesktopUpdateState({ status: 'available', currentVersion: release.currentVersion, latestVersion: release.latestVersion, percent: 0, message: '' });
+    }
   });
 }, 3500);
+if (!window.harbor?.downloadUpdate) {
+  updateActionButton.disabled = true;
+  updateActionButton.textContent = 'Available in the installed app';
+}
 if (!window.harbor?.chooseUpdate) {
   chooseUpdateButton.disabled = true;
   chooseUpdateButton.textContent = 'Available in the installed app';
