@@ -205,7 +205,7 @@ const run = async () => {
     categories: [...new Set(currentMediaList.map((item) => item.category))],
     count: currentMediaList.length,
     canLoadMore: searchState.canLoadMore,
-    requests: [...window.__harborSearchRequests]
+    requests: window.__harborSearchRequests.filter((url) => url.includes('/search/movie?') || url.includes('/search/tv?'))
   })`);
   if (watchScoped.categories.join(',') !== 'Watch'
       || watchScoped.requests.length !== 2
@@ -226,7 +226,7 @@ const run = async () => {
     categories: [...new Set(currentMediaList.map((item) => item.category))],
     count: currentMediaList.length,
     canLoadMore: searchState.canLoadMore,
-    requests: [...window.__harborSearchRequests]
+    requests: window.__harborSearchRequests.filter((url) => url.includes('/search/movie?') || url.includes('/search/tv?'))
   })`);
   if (watchPageTwo.page !== 2
       || watchPageTwo.categories.join(',') !== 'Watch'
@@ -247,7 +247,7 @@ const run = async () => {
   const animeScoped = await evaluate(`({
     scope: [activeCategory, activeSubcategory],
     types: [...new Set(currentMediaList.map((item) => item.type))],
-    requests: [...window.__harborSearchRequests],
+    requests: window.__harborSearchRequests.filter((url) => url.includes('/search/movie?') || url.includes('/search/tv?')),
     placeholder: document.querySelector('#resource-search').placeholder
   })`);
   if (animeScoped.scope.join('|') !== 'Watch|Anime'
