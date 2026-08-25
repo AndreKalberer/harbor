@@ -26,6 +26,10 @@ android {
 
   sourceSets.getByName("main").assets.srcDir(file("../../build/android-assets"))
 
+  buildFeatures {
+    buildConfig = true
+  }
+
   signingConfigs {
     if (releaseKeystore != null && releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null) {
       create("release") {
