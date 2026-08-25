@@ -10,20 +10,24 @@ const sourceName = `Harbor-${version}-Source.zip`;
 const sourcePath = path.join(releaseRoot, sourceName);
 
 const ignoredNames = new Set(['node_modules', 'release', 'build', '.gradle', '.tv-test-profile']);
-const ignoredExtensions = new Set(['.png', '.log']);
-const sourceEntries = ['.github', 'app', 'assets', 'electron', 'scripts', 'tests', 'tv', '.gitignore', 'index.html', 'package.json', 'package-lock.json', 'README.md'];
+const ignoredExtensions = new Set(['.log']);
+const sourceEntries = ['.github', 'app', 'assets', 'electron', 'scripts', 'shared', 'tests', 'tv', '.gitignore', 'index.html', 'package.json', 'package-lock.json', 'README.md', 'LICENSE'];
 
 const addToZip = (zip, absolutePath, archivePath) => {
   const stats = fs.statSync(absolutePath);
   if (stats.isDirectory()) {
-    if (ignoredNames.has(path.basename(absolutePath))) return;
+    const directoryName = path.basename(absolutePath);
+    if (ignoredNames.has(directoryName) || directoryName.startsWith('.desktop-test-profile')) return;
     for (const entry of fs.readdirSync(absolutePath)) {
       addToZip(zip, path.join(absolutePath, entry), `${archivePath}/${entry}`);
     }
     return;
   }
-  if (ignoredExtensions.has(path.extname(absolutePath).toLowerCase())) return;
-  zip.file(archivePath.replace(/\\/g, '/'), fs.readFileSync(absolutePath));
+  const normalizedArchivePath = archivePath.replace(/\\/g, '/');
+  const extension = path.extname(absolutePath).toLowerCase();
+  if (ignoredExtensions.has(extension)) return;
+  if (normalizedArchivePath.startsWith('tests/') && extension === '.png') return;
+  zip.file(normalizedArchivePath, fs.readFileSync(absolutePath));
 };
 
 const sha256 = (filePath) => crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');

@@ -61,6 +61,10 @@ const run = async () => {
     const screenshot = await command('Page.captureScreenshot', { format: 'png', fromSurface: true });
     fs.writeFileSync(path.join(__dirname, fileName), Buffer.from(screenshot.data, 'base64'));
   };
+  const pressKey = async (key, code, virtualKeyCode) => {
+    await command('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: virtualKeyCode, nativeVirtualKeyCode: virtualKeyCode });
+    await command('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtualKeyCode, nativeVirtualKeyCode: virtualKeyCode });
+  };
 
   await command('Runtime.enable');
   await command('Page.enable');
@@ -71,7 +75,7 @@ const run = async () => {
     if (typeof setActiveSection === 'function') setActiveSection('Home');
   })()`);
   await evaluate(`new Promise((resolve) => {
-    const ready = () => document.querySelectorAll('#resource-list .media-card').length > 0;
+    const ready = () => document.querySelectorAll('#resource-list .media-card').length > 0 && getSectionItems('Listen').length === 12;
     if (ready()) return resolve();
     const timer = setInterval(() => { if (ready()) { clearInterval(timer); resolve(); } }, 50);
   })`);
@@ -88,6 +92,30 @@ const run = async () => {
   })`);
   if (shell.streamAllowsPopups) {
     throw new Error('The embedded player still grants popup permission.');
+  }
+  await evaluate(`playerButton.click()`);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  await pressKey('Tab', 'Tab', 9);
+  const myHarborTabStayedInside = await evaluate(`myHarborDialog.contains(document.activeElement)`);
+  await pressKey('Escape', 'Escape', 27);
+  await evaluate(`updateButton.focus(); updateButton.click()`);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  await pressKey('Escape', 'Escape', 27);
+  const keyboardDialogs = await evaluate(`(() => {
+    const updateFocusRestored = document.activeElement === updateButton;
+    searchInput.focus();
+    const searchStyle = getComputedStyle(document.querySelector('.header-search'));
+    return {
+      myHarborTabStayedInside: ${JSON.stringify(myHarborTabStayedInside)},
+      myHarborClosed: !myHarborDialog.open,
+      updateClosed: !updateDialog.open,
+      updateFocusRestored,
+      searchOutline: searchStyle.outlineStyle !== 'none' && parseFloat(searchStyle.outlineWidth) > 0
+    };
+  })()`);
+  if (!keyboardDialogs.myHarborTabStayedInside || !keyboardDialogs.myHarborClosed || !keyboardDialogs.updateClosed
+      || !keyboardDialogs.updateFocusRestored || !keyboardDialogs.searchOutline) {
+    throw new Error('Desktop keyboard dialog or focus regression failed: ' + JSON.stringify(keyboardDialogs));
   }
   const popupAttemptBlocked = await evaluate(`new Promise((resolve, reject) => {
     const webview = document.querySelector('#stream-in-app-webview');
@@ -109,19 +137,75 @@ const run = async () => {
   if (!popupAttemptBlocked) {
     throw new Error('The embedded player allowed a runtime popup attempt.');
   }
-  const playbackRecovery = await evaluate(`(() => {
+  const playbackRecovery = await evaluate(`(async () => {
+    activeMedia = discoveryMediaList.find((item) => item.category === 'Watch');
+    if (!inAppStreamDialog.open) inAppStreamDialog.showModal();
     showStreamStatus('Testing recovery', 'Checking the consumer-facing retry state.', true);
     const shown = !streamStatusOverlay.hidden;
     const retryVisible = !streamRetryButton.hidden;
     const failed = streamStatusOverlay.classList.contains('failed');
     markStreamReady();
-    return { shown, retryVisible, failed, hiddenAfterReady: streamStatusOverlay.hidden };
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const hiddenAfterReady = streamStatusOverlay.hidden;
+    inAppStreamDialog.close();
+    return { shown, retryVisible, failed, hiddenAfterReady };
   })()`);
   if (!playbackRecovery.shown
       || !playbackRecovery.retryVisible
       || !playbackRecovery.failed
       || !playbackRecovery.hiddenAfterReady) {
     throw new Error('Playback recovery UI failed: ' + JSON.stringify(playbackRecovery));
+  }
+  const detailLoading = await evaluate(`(async () => {
+    const sample = {
+      id: 'qa-detail-loading', tmdbId: '', name: 'QA Loading Series', category: 'Watch', type: 'tv',
+      year: '2026', rating: '10', sections: ['TV Shows'], overview: 'Local QA fixture.',
+      seasons: [{ season_number: 1, name: 'Season 1', episode_count: 2 }]
+    };
+    const opening = openDetailDialog(sample);
+    const visibleImmediately = mediaDetailDialog.open;
+    const loadingVisible = detailEpisodesList.textContent.includes('Loading episodes');
+    await opening;
+    const episodes = detailEpisodesList.querySelectorAll('.ep-btn').length;
+    if (mediaDetailDialog.open) mediaDetailDialog.close();
+    activeMedia = null;
+    return { visibleImmediately, loadingVisible, episodes };
+  })()`);
+  if (!detailLoading.visibleImmediately || !detailLoading.loadingVisible || detailLoading.episodes !== 2) {
+    throw new Error('Series detail loading state failed: ' + JSON.stringify(detailLoading));
+  }
+  const episodePlayback = await evaluate(`(async () => {
+    const sample = {
+      id: 'qa-direct-episode', tmdbId: '', name: 'QA Direct Episode', category: 'Watch', type: 'tv',
+      year: '2026', rating: '10', sections: ['TV Shows'], overview: 'Local QA fixture.',
+      seasons: [{ season_number: 1, name: 'Season 1', episode_count: 2 }],
+      directStream: 'data:video/mp4;base64,'
+    };
+    await openDetailDialog(sample);
+    const episodeButton = document.querySelector('#detail-episodes-list .ep-btn');
+    const separatePlayButton = document.querySelector('#detail-play-btn');
+    episodeButton.click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const result = {
+      buttonFound: Boolean(episodeButton),
+      separatePlayButton: Boolean(separatePlayButton),
+      detailClosed: !mediaDetailDialog.open,
+      playerOpened: inAppStreamDialog.open,
+      selection: [activeSeason, activeEpisode]
+    };
+    streamDirectVideo.pause();
+    streamDirectVideo.removeAttribute('src');
+    if (inAppStreamDialog.open) inAppStreamDialog.close();
+    activeMedia = null;
+    return result;
+  })()`);
+  if (!episodePlayback.buttonFound
+      || episodePlayback.separatePlayButton
+      || !episodePlayback.detailClosed
+      || !episodePlayback.playerOpened
+      || episodePlayback.selection[0] !== 1
+      || episodePlayback.selection[1] !== 1) {
+    throw new Error('Direct episode playback failed: ' + JSON.stringify(episodePlayback));
   }
   await capture('ui-shell.png');
 
@@ -134,12 +218,19 @@ const run = async () => {
       document.querySelector('[data-section="' + section + '"]').click();
       result[section] = {
         categories: [...document.querySelectorAll('.category-button')].map((button) => button.textContent.trim()),
-        cards: document.querySelectorAll('#resource-list .media-card').length
+        cards: document.querySelectorAll('#resource-list .media-card').length,
+        externalCards: document.querySelectorAll('#resource-list .media-card[data-external="true"]').length
       };
     }
     document.querySelector('[data-section="Watch"]').click();
     return result;
   })()`);
+  if (hubs.Listen.cards !== 12 || hubs.Read.cards !== 24 || hubs.Play.cards !== 8
+      || hubs.Listen.externalCards !== hubs.Listen.cards
+      || hubs.Read.externalCards !== hubs.Read.cards
+      || hubs.Play.externalCards !== hubs.Play.cards) {
+    throw new Error('Desktop link directory regression failed: ' + JSON.stringify(hubs));
+  }
 
   const consumerState = await evaluate(`(() => {
     window.__harborOriginalUserState = localStorage.getItem(USER_STATE_KEY);
@@ -204,7 +295,7 @@ const run = async () => {
   await capture('ui-compact.png');
 
   socket.close();
-  process.stdout.write(`${JSON.stringify({ shell, popupAttemptBlocked, playbackRecovery, consumerState, hubs, compact }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ shell, keyboardDialogs, popupAttemptBlocked, playbackRecovery, detailLoading, episodePlayback, consumerState, hubs, compact }, null, 2)}\n`);
 };
 
 run().catch((error) => {

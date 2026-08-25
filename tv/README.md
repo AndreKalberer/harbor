@@ -1,6 +1,6 @@
 # Harbor TV sideloading
 
-Harbor TV is a remote-first client. The small platform package opens the hosted ten-foot interface at `https://andrekalberer.github.io/harbor/tv/`, so interface improvements do not require reinstalling the TV package.
+Harbor TV is a remote-first client. Android, LG, and Samsung release packages bundle the interface so startup does not depend on GitHub Pages. Catalog artwork, provider searches, and playback still require a network connection, and interface updates require installing a new package.
 
 ## Android TV and Fire TV
 
@@ -11,7 +11,7 @@ Use `Harbor-TV-Android-Fire-<version>.apk`.
 3. Run `adb install -r Harbor-TV-Android-Fire-<version>.apk`.
 4. Harbor appears in the TV launcher because the package declares the Leanback launcher category and does not require a touchscreen.
 
-The release APK is signed with the Android debug key for direct sideload testing. Use a private long-lived signing key before broad distribution so future upgrades retain the same identity.
+Pull-request APKs are debug builds for QA. Tagged release APKs require a private long-lived signing key so sideloaded upgrades keep the same application identity.
 
 ## LG webOS
 

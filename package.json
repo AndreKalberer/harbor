@@ -1,6 +1,6 @@
 {
   "name": "harbor-desktop",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A consumer entertainment hub for watching, listening, reading, and playing.",
   "desktopName": "com.harbor.desktop",
   "main": "electron/main.cjs",
@@ -15,8 +15,15 @@
   "scripts": {
     "start": "electron .",
     "icon:render": "electron scripts/render-icon.cjs",
+    "tv:icon": "electron scripts/render-tv-icon.cjs",
     "test": "npm run test:static",
-    "test:static": "node --check app/config.js && node --check app/renderer.js && node --check electron/main.cjs && node --check electron/preload.cjs && node --check tv/config.js && node --check tv/tv.js && node --check scripts/configure-build.cjs && node --check scripts/stage-tv.cjs && node --check scripts/package-current-release.cjs && node tests/static-audit.cjs",
+    "test:consumer": "npm test && npm run test:desktop-smoke",
+    "test:all": "npm run test:consumer && npm run test:tv-smoke",
+    "test:desktop-smoke": "node tests/run-desktop-smoke.cjs",
+    "test:packaged-smoke": "node tests/run-packaged-smoke.cjs",
+    "test:tv-smoke": "node tests/run-tv-smoke.cjs",
+    "qa:serve": "node tests/serve-static.cjs",
+    "test:static": "node --check shared/series-metadata.js && node --check shared/search-ranking.js && node --check shared/watch-browse.js && node --check shared/playback-providers.js && node --check shared/user-state.js && node --check shared/artwork-cache.js && node --check shared/release-channel.js && node --check app/catalog-data.js && node --check app/config.js && node --check app/renderer.js && node --check electron/main.cjs && node --check electron/preload.cjs && node --check tv/config.js && node --check tv/tv.js && node --check scripts/configure-build.cjs && node --check scripts/render-icon.cjs && node --check scripts/render-tv-icon.cjs && node --check scripts/stage-tv.cjs && node --check scripts/package-current-release.cjs && node --check tests/run-desktop-smoke.cjs && node --check tests/run-packaged-smoke.cjs && node --check tests/run-tv-smoke.cjs && node --check tests/capture-tv.cjs && node --check tests/tv-harness.cjs && node --check tests/search-smoke.cjs && node --check tests/watch-filters-smoke.cjs && node --check tests/smoke-library.cjs && node tests/catalog-data.test.cjs && node tests/series-metadata.test.cjs && node tests/search-ranking.test.cjs && node tests/watch-browse.test.cjs && node tests/playback-providers.test.cjs && node tests/user-state.test.cjs && node tests/artwork-cache.test.cjs && node tests/release-channel.test.cjs && node tests/static-audit.cjs && node tests/release-config.test.cjs",
     "configure:build": "node scripts/configure-build.cjs --desktop",
     "tv:stage": "node scripts/stage-tv.cjs",
     "tv:lg": "npm run tv:stage && npx --yes --package @webos-tools/cli@3.2.5 ares-package tv/build/lg -o tv/release",
@@ -51,6 +58,7 @@
       "app/**/*",
       "assets/**/*",
       "electron/**/*",
+      "shared/**/*",
       "package.json"
     ],
     "win": {
@@ -94,6 +102,7 @@
     }
   },
   "dependencies": {
+    "hls.js": "^1.7.1",
     "jszip": "^3.10.1",
     "pdfjs-dist": "^6.2.108"
   }

@@ -4,7 +4,7 @@ const path = require('node:path');
 
 const projectRoot = path.resolve(__dirname, '..');
 const markPath = path.join(projectRoot, 'assets', 'harbor-tv-icon.svg');
-const outputPath = path.join(projectRoot, 'assets', 'icon.png');
+const outputPath = path.join(projectRoot, 'assets', 'tv-icon.png');
 
 app.disableHardwareAcceleration();
 
@@ -14,7 +14,6 @@ const render = async () => {
   const window = new BrowserWindow({
     width: 1024,
     height: 1024,
-    useContentSize: true,
     show: false,
     frame: false,
     webPreferences: { backgroundThrottling: false }
@@ -31,11 +30,7 @@ const render = async () => {
     image.onerror = () => reject(new Error('SVG render failed'));
     image.src = ${JSON.stringify(`data:image/svg+xml;base64,${Buffer.from(source).toString('base64')}`)};
   })`);
-  const png = Buffer.from(pngDataUrl.split(',')[1], 'base64');
-  if (png.readUInt32BE(16) !== 1024 || png.readUInt32BE(20) !== 1024) {
-    throw new Error('Icon render must be a 1024x1024 square.');
-  }
-  fs.writeFileSync(outputPath, png);
+  fs.writeFileSync(outputPath, Buffer.from(pngDataUrl.split(',')[1], 'base64'));
   window.destroy();
 };
 

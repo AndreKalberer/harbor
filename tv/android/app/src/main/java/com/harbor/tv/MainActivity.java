@@ -15,7 +15,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
-  private static final String HARBOR_URL = "https://andrekalberer.github.io/harbor/tv/";
+  private static final String HARBOR_URL = "file:///android_asset/index.html";
   private WebView webView;
 
   @Override
@@ -33,17 +33,20 @@ public class MainActivity extends Activity {
     settings.setJavaScriptEnabled(true);
     settings.setDomStorageEnabled(true);
     settings.setDatabaseEnabled(false);
-    settings.setAllowFileAccess(false);
+    settings.setAllowFileAccess(true);
+    settings.setAllowFileAccessFromFileURLs(false);
+    settings.setAllowUniversalAccessFromFileURLs(false);
     settings.setAllowContentAccess(false);
     settings.setMediaPlaybackRequiresUserGesture(false);
     settings.setSupportMultipleWindows(false);
-    settings.setUserAgentString(settings.getUserAgentString() + " HarborTV/2.0");
+    settings.setUserAgentString(settings.getUserAgentString() + " HarborTV/" + BuildConfig.VERSION_NAME);
 
     webView.setWebViewClient(new WebViewClient() {
       @Override
       public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        if (!request.isForMainFrame()) return false;
         String scheme = request.getUrl().getScheme();
-        return !("https".equalsIgnoreCase(scheme) || "about".equalsIgnoreCase(scheme));
+        return !("file".equalsIgnoreCase(scheme) || "about".equalsIgnoreCase(scheme));
       }
     });
     webView.setWebChromeClient(new WebChromeClient() {
@@ -77,8 +80,13 @@ public class MainActivity extends Activity {
 
   @Override
   public void onBackPressed() {
-    if (webView != null && webView.canGoBack()) webView.goBack();
-    else super.onBackPressed();
+    if (webView == null) {
+      super.onBackPressed();
+      return;
+    }
+    webView.evaluateJavascript("(function () { var player = document.querySelector('#player-panel'); var detail = document.querySelector('#detail-panel'); var search = document.querySelector('#search-panel'); var open = (player && !player.hidden) || (detail && !detail.hidden) || (search && !search.hidden); if (open) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 4, bubbles: true })); return Boolean(open); }())", result -> {
+      if (!"true".equals(result)) MainActivity.super.onBackPressed();
+    });
   }
 
   @Override

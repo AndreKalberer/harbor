@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https:; media-src 'self' blob: https:; frame-src data: https:; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: harbor-artwork:; connect-src 'self' https:; media-src 'self' blob: https:; frame-src data: https:; object-src 'none'; base-uri 'none'; form-action 'none'" />
     <title>Harbor</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -25,7 +25,9 @@
 
         <div class="header-tools">
           <div class="header-search" role="search">
-            <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.75"></circle><path d="m16 16 4 4"></path></svg>
+            <button id="compact-search-button" class="compact-search-button" type="button" aria-label="Open search">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.75"></circle><path d="m16 16 4 4"></path></svg>
+            </button>
             <label class="sr-only" for="resource-search">Search Harbor</label>
             <input id="resource-search" type="search" autocomplete="off" placeholder="Search" />
             <kbd aria-hidden="true">Ctrl K</kbd>
@@ -65,6 +67,7 @@
 
         <div class="browse-shell">
           <nav id="category-list" class="category-list" aria-label="Browse categories"></nav>
+          <nav id="watch-filter-list" class="watch-filter-list" aria-label="Browse the selected Watch category" hidden></nav>
 
           <section class="directory" aria-label="Browse Harbor">
             <div id="resource-list" class="resource-list"></div>
@@ -79,11 +82,32 @@
 
           <footer class="page-footer">
             <span id="catalog-count">Loading Harbor…</span>
-            <span id="app-version">Harbor 2.0.0</span>
+            <span id="app-version">Harbor 2.1.0</span>
           </footer>
         </div>
       </main>
     </div>
+
+    <dialog id="welcome-dialog" class="welcome-dialog" aria-labelledby="welcome-title">
+      <div class="welcome-heading">
+        <img src="../assets/harbor-mark.svg" alt="" />
+        <div>
+          <span class="dialog-kicker">Welcome aboard</span>
+          <h2 id="welcome-title">Everything you enjoy, in one harbor.</h2>
+          <p>Here are the three things worth knowing before you explore.</p>
+        </div>
+      </div>
+      <div class="welcome-grid">
+        <article><span aria-hidden="true">01</span><strong>Explore your way</strong><p>Browse Watch, Listen, Read, and Play—or press Ctrl K to search from anywhere.</p></article>
+        <article><span aria-hidden="true">02</span><strong>Make it yours</strong><p>Save favorites, resume playback, and open local media from My Harbor.</p></article>
+        <article><span aria-hidden="true">03</span><strong>Built for interruptions</strong><p>Harbor remembers progress locally and can try another existing playback route when one does not respond.</p></article>
+      </div>
+      <p class="welcome-privacy">Your lists and preferences stay on this device unless you choose to create a backup.</p>
+      <div class="dialog-actions welcome-actions">
+        <button id="welcome-my-harbor-button" class="button-secondary" type="button">See My Harbor</button>
+        <button id="welcome-start-button" class="button-primary" type="button">Start exploring</button>
+      </div>
+    </dialog>
 
     <dialog id="media-detail-dialog" class="media-detail-dialog" aria-labelledby="detail-title">
       <div class="detail-dialog-header">
@@ -105,10 +129,6 @@
           <div id="detail-episodes-list" class="detail-episodes-list"></div>
         </div>
         <div class="detail-actions-row">
-          <button id="detail-play-btn" class="button-primary btn-play-action">
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 7 8 5-8 5z"></path></svg>
-            Play now
-          </button>
           <button id="detail-save-btn" class="button-secondary" type="button">＋ My List</button>
         </div>
       </div>
@@ -140,9 +160,10 @@
 
       <div class="stream-dialog-body">
         <div id="stream-status-overlay" class="stream-status-overlay" role="status">
-          <span class="stream-loading-ring" aria-hidden="true"></span>
+          <span class="stream-loading-mark" aria-hidden="true"><img src="../assets/harbor-mark.svg" alt="" /></span>
+          <span class="stream-status-kicker">Harbor</span>
           <strong id="stream-status-title">Starting playback…</strong>
-          <p id="stream-status-detail">Finding the best available route.</p>
+          <p id="stream-status-detail">Getting it ready…</p>
           <button id="stream-retry-button" class="button-secondary" type="button" hidden>Try again</button>
         </div>
         <video id="stream-direct-video" class="stream-direct-video" controls autoplay hidden></video>
@@ -166,15 +187,15 @@
         <div><strong id="history-count">0</strong><span>Recently opened</span></div>
       </div>
 
-      <nav id="my-harbor-tabs" class="my-harbor-tabs" aria-label="My Harbor sections">
-        <button class="active" type="button" data-my-harbor-tab="list">My List</button>
-        <button type="button" data-my-harbor-tab="continue">Continue</button>
-        <button type="button" data-my-harbor-tab="history">History</button>
-        <button type="button" data-my-harbor-tab="library">Library</button>
-        <button type="button" data-my-harbor-tab="settings">Settings</button>
+      <nav id="my-harbor-tabs" class="my-harbor-tabs" role="tablist" aria-label="My Harbor sections">
+        <button id="my-harbor-tab-list" class="active" type="button" role="tab" aria-controls="my-harbor-content" data-my-harbor-tab="list">My List</button>
+        <button id="my-harbor-tab-continue" type="button" role="tab" aria-controls="my-harbor-content" data-my-harbor-tab="continue">Continue</button>
+        <button id="my-harbor-tab-history" type="button" role="tab" aria-controls="my-harbor-content" data-my-harbor-tab="history">History</button>
+        <button id="my-harbor-tab-library" type="button" role="tab" aria-controls="my-harbor-content" data-my-harbor-tab="library">Library</button>
+        <button id="my-harbor-tab-settings" type="button" role="tab" aria-controls="my-harbor-content" data-my-harbor-tab="settings">Settings</button>
       </nav>
 
-      <div id="my-harbor-content" class="my-harbor-content"></div>
+      <div id="my-harbor-content" class="my-harbor-content" role="tabpanel" tabindex="0" aria-labelledby="my-harbor-tab-list"></div>
 
       <div class="my-harbor-footer">
         <p>Your lists and preferences stay on this device.</p>
@@ -251,11 +272,37 @@
           <img src="../assets/harbor-mark.svg" alt="" />
           <div>
             <span class="dialog-kicker">About</span>
-            <h2 id="update-title">Harbor</h2>
+            <h2 id="update-title" tabindex="-1">Harbor</h2>
           </div>
         </div>
         <p>Get official Harbor releases, then let Harbor validate the installer before it opens.</p>
+        <p class="update-channel">Release channel: <strong>Stable</strong></p>
         <p id="update-status" class="update-status" aria-live="polite">Checking version…</p>
+        <div class="about-trust-grid">
+          <section>
+            <h3>Privacy</h3>
+            <p>My List, history, playback progress, preferences, and local-library paths stay on this device. Backups are created only when you choose a location.</p>
+            <p>Catalog, artwork, live-channel, and playback requests connect to their respective third-party services. Those services may receive normal connection information and the title or episode being requested.</p>
+          </section>
+          <section>
+            <h3>Playback providers</h3>
+            <p id="provider-disclosure">Loading configured providers…</p>
+            <p>Harbor does not operate these services or control their availability, content, privacy practices, or terms.</p>
+          </section>
+        </div>
+        <section class="about-credits" aria-labelledby="credits-title">
+          <h3 id="credits-title">Credits and data sources</h3>
+          <div class="tmdb-credit">
+            <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg" alt="TMDB" />
+            <p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+            <button id="tmdb-page-button" class="text-button" type="button">Visit TMDB</button>
+          </div>
+          <p>Additional functionality uses HLS.js, JSZip, PDF.js, Open Library, iTunes Search, IPTV-org, and the curated YarrList directory.</p>
+        </section>
+        <section class="about-support" aria-labelledby="support-title">
+          <div><h3 id="support-title">Support diagnostics</h3><p id="diagnostic-summary">Loading device details…</p></div>
+          <div><button id="copy-diagnostics-button" class="button-secondary" type="button">Copy diagnostics</button><button id="support-page-button" class="button-secondary" type="button">Get support</button></div>
+        </section>
         <div class="dialog-actions">
           <button class="button-secondary" value="cancel">Close</button>
           <button id="release-page-button" class="button-secondary" type="button">Open downloads</button>
@@ -264,7 +311,16 @@
       </form>
     </dialog>
 
+    <script src="../shared/series-metadata.js"></script>
+    <script src="../shared/search-ranking.js"></script>
+    <script src="../shared/watch-browse.js"></script>
+    <script src="../shared/playback-providers.js"></script>
+    <script src="../shared/user-state.js"></script>
+    <script src="../shared/artwork-cache.js"></script>
+    <script src="../shared/release-channel.js"></script>
+    <script src="catalog-data.js"></script>
     <script src="config.js"></script>
+    <script src="../node_modules/hls.js/dist/hls.min.js"></script>
     <script src="../node_modules/jszip/dist/jszip.min.js"></script>
     <script src="renderer.js"></script>
   </body>
