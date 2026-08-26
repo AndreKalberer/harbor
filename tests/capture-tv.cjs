@@ -61,7 +61,7 @@ const run = async () => {
   const shell = await evaluate(`({
     title: document.title,
     viewport: [innerWidth, innerHeight],
-    nav: [...document.querySelectorAll('[data-section]')].map((node) => node.textContent.trim()),
+    nav: [...document.querySelectorAll('.tv-nav button[data-section]')].map((node) => node.textContent.trim()),
     categories: [...document.querySelectorAll('#subcategory-row button')].map((node) => node.textContent.trim()),
     cards: document.querySelectorAll('#card-grid .media-card').length,
     cardImages: document.querySelectorAll('#card-grid .media-card img').length,
