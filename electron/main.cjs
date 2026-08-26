@@ -9,6 +9,8 @@ const artworkCacheApi = require('../shared/artwork-cache.js');
 const releaseChannelApi = require('../shared/release-channel.js');
 const { autoUpdater } = require('electron-updater');
 
+if (process.platform === 'win32') app.disableHardwareAcceleration();
+
 protocol.registerSchemesAsPrivileged([{
   scheme: 'harbor-artwork',
   privileges: { secure: true, standard: true, supportFetchAPI: false, stream: true }
@@ -408,8 +410,22 @@ const createWindow = () => {
     guestContents.on('will-redirect', keepInsidePlayer);
   });
 
-  window.once('ready-to-show', () => {
-    if (process.env.HARBOR_QA_SHOW !== '0') window.show();
+  let revealed = false;
+  let revealTimer = null;
+  const revealWindow = () => {
+    if (revealed || window.isDestroyed() || process.env.HARBOR_QA_SHOW === '0') return;
+    revealed = true;
+    if (revealTimer) clearTimeout(revealTimer);
+    window.center();
+    window.show();
+    window.focus();
+  };
+  window.once('ready-to-show', revealWindow);
+  window.webContents.once('did-finish-load', revealWindow);
+  revealTimer = setTimeout(revealWindow, 5000);
+  revealTimer.unref();
+  window.once('closed', () => {
+    if (revealTimer) clearTimeout(revealTimer);
   });
   void window.loadFile(path.join(__dirname, '..', 'app', 'index.html'));
 };
@@ -419,6 +435,19 @@ app.setAboutPanelOptions({
   applicationVersion: app.getVersion(),
   copyright: 'Your entertainment, in one place.'
 });
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    const existingWindow = BrowserWindow.getAllWindows()[0];
+    if (!existingWindow || existingWindow.isDestroyed()) return;
+    if (existingWindow.isMinimized()) existingWindow.restore();
+    existingWindow.show();
+    existingWindow.focus();
+  });
 
 app.whenReady().then(() => {
   app.setAppUserModelId('com.harbor.desktop');
@@ -650,6 +679,7 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

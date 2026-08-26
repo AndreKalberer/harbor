@@ -52,6 +52,9 @@ assert(packageJson.dependencies?.['electron-updater'], 'The installed desktop ap
 assert(main.includes('contextIsolation: true'), 'Electron context isolation is not enabled.');
 assert(main.includes('nodeIntegration: false'), 'Electron node integration is not disabled.');
 assert(main.includes('sandbox: true'), 'Electron sandbox is not enabled.');
+assert(main.includes("process.platform === 'win32') app.disableHardwareAcceleration()"), 'Windows startup does not guard against an unusable GPU process.');
+assert(main.includes("window.webContents.once('did-finish-load', revealWindow)") && main.includes('window.center()'), 'The desktop window lacks a load-complete reveal fallback.');
+assert(main.includes('app.requestSingleInstanceLock()') && main.includes("app.on('second-instance'") && main.includes('existingWindow.show()'), 'Repeated desktop launches do not restore the existing Harbor window.');
 assert(main.includes("guestContents.setWindowOpenHandler(() => ({ action: 'deny' }))"), 'Embedded popup blocking is missing.');
 assert(main.includes("streamingSession.on('will-download'"), 'Embedded download blocking is missing.');
 assert(!appHtml.includes('allowpopups'), 'The app webview still grants popup permission.');
