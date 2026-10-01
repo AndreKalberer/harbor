@@ -51,7 +51,24 @@
     }
   }
 
+  async function fetchTrustedArtwork(candidate, fetchResponse) {
+    var source = normalizeSource(candidate);
+    if (!source) throw new Error('Invalid artwork source.');
+    for (var redirects = 0; redirects <= 5; redirects += 1) {
+      // Electron net.fetch does not provide a reliable Response.url.
+      // Validate each destination ourselves before requesting it.
+      var response = await fetchResponse(source, { redirect: 'manual' });
+      if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+      var location = response.headers.get('location');
+      if (response.body) await response.body.cancel();
+      if (!location || redirects === 5) throw new Error('Invalid artwork redirect.');
+      source = normalizeSource(new URL(location, source).href);
+      if (!source) throw new Error('Untrusted artwork redirect.');
+    }
+  }
+
   return Object.freeze({
+    fetchTrustedArtwork: fetchTrustedArtwork,
     scheme: scheme,
     isTrustedHost: isTrustedHost,
     normalizeSource: normalizeSource,

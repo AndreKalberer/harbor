@@ -10,6 +10,9 @@ for (const item of catalog) {
   assert.equal(typeof item.id, 'string');
   assert.equal(typeof item.name, 'string');
   assert.equal(typeof item.category, 'string');
+  if (['movie', 'tv', 'anime'].includes(item.type)) {
+    assert.match(item.artworkUrl || '', /^https:\/\/image\.tmdb\.org\/t\/p\/w780\/[^/]+\.jpg$/, item.name + ' must include built-in artwork without an API key.');
+  }
 }
 
 process.stdout.write(`Desktop catalog module verified (${catalog.length} entries).\n`);

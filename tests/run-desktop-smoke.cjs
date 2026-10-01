@@ -12,7 +12,8 @@ const packagedExecutable = process.env.HARBOR_QA_EXECUTABLE
 const defaultSmokes = [
   'search-smoke.cjs',
   'watch-filters-smoke.cjs',
-  'smoke-library.cjs'
+  'smoke-library.cjs',
+  'card-artwork-smoke.cjs'
 ];
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));

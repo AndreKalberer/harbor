@@ -1061,7 +1061,7 @@ const formatDirectoryLink = (item, index) => ({
   rating: '',
   sections: item.sections?.length ? item.sections : [item.category],
   overview: 'Open ' + item.domain + ' in your browser. This link is listed in the YarrList ' + item.category.toLowerCase() + ' directory.',
-  artworkUrl: '',
+  artworkUrl: window.HarborSiteArtwork[item.domain] || window.HarborCardArtwork.fallback(item),
   domain: item.domain,
   externalUrl: item.url,
   directorySource: 'YarrList'
@@ -2166,16 +2166,18 @@ const buildCard = (item) => {
   );
   art.append(fallback);
 
-  if (item.artworkUrl) {
-    const image = document.createElement('img');
-    image.src = artworkSource(item.artworkUrl);
-    image.alt = '';
-    image.loading = 'lazy';
-    image.referrerPolicy = 'no-referrer';
-    image.addEventListener('load', () => { fallback.hidden = true; }, { once: true });
-    image.addEventListener('error', () => { fallback.hidden = false; image.remove(); }, { once: true });
-    art.append(image);
-  }
+  const fallbackSource = window.HarborCardArtwork.fallback(item);
+  const image = document.createElement('img');
+  image.alt = '';
+  image.loading = 'lazy';
+  image.referrerPolicy = 'no-referrer';
+  image.addEventListener('load', () => { fallback.hidden = true; });
+  image.addEventListener('error', () => {
+    if (image.src !== fallbackSource) image.src = fallbackSource;
+    else { fallback.hidden = false; image.remove(); }
+  });
+  image.src = item.artworkUrl ? artworkSource(item.artworkUrl) : fallbackSource;
+  art.append(image);
 
   if (item.type === 'live') art.append(createElement('span', 'media-badge', 'Live'));
   art.append(createElement('span', 'card-play', item.externalUrl ? '↗' : '▶'));

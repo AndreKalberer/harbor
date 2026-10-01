@@ -128,11 +128,10 @@ const artworkResponse = async (request) => {
       }
     }
 
-    const response = await net.fetch(source, { redirect: 'follow' });
-    const responseSource = artworkCacheApi.normalizeSource(response.url);
+    const response = await artworkCacheApi.fetchTrustedArtwork(source, (url, options) => net.fetch(url, options));
     const contentType = String(response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
     const contentLength = Number(response.headers.get('content-length') || 0);
-    if (!response.ok || !responseSource || !contentType.startsWith('image/') || contentLength > artworkCacheMaxFileBytes) {
+    if (!response.ok || !contentType.startsWith('image/') || contentLength > artworkCacheMaxFileBytes) {
       return new Response('Artwork unavailable.', { status: 404 });
     }
     const content = Buffer.from(await response.arrayBuffer());
