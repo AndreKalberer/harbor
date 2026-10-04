@@ -13,6 +13,7 @@ const defaultSmokes = [
   'search-smoke.cjs',
   'watch-filters-smoke.cjs',
   'smoke-library.cjs',
+  'backup-restore-smoke.cjs',
   'card-artwork-smoke.cjs'
 ];
 
@@ -111,6 +112,7 @@ const runSmoke = async (smokeName) => {
   }
 
   const port = await reservePort();
+  const mainPort = smokeName === 'backup-restore-smoke.cjs' ? await reservePort() : 0;
   const profileDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-desktop-smoke-'));
   const output = [];
   if (packagedExecutable && !fs.existsSync(packagedExecutable)) {
@@ -124,6 +126,7 @@ const runSmoke = async (smokeName) => {
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${profileDirectory}`
   ];
+  if (mainPort) harborArgs.push(`--inspect=${mainPort}`);
   if (!packagedExecutable) {
     const entry = process.env.HARBOR_QA_ENTRYPOINT
       ? path.resolve(__dirname, process.env.HARBOR_QA_ENTRYPOINT) : projectRoot;
@@ -149,7 +152,7 @@ const runSmoke = async (smokeName) => {
     await waitForDebugTarget(port, harbor, output);
     await runCommand(process.execPath, [smokePath, String(port)], {
       cwd: projectRoot,
-      env: process.env,
+      env: { ...process.env, HARBOR_QA_MAIN_PORT: String(mainPort) },
       stdio: 'inherit',
       windowsHide: true
     });

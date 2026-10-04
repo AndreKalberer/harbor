@@ -80,4 +80,38 @@ assert.throws(() => userState.parseBackup('{bad json'));
 assert.throws(() => userState.parseBackup({ unrelated: true }), /not a Harbor data backup/);
 assert.throws(() => userState.parseBackup({ format: 'harbor-user-data', version: 99, state: {} }), /not supported/);
 
+// Invalid imports must fail before the restore flow replaces the current library.
+const malformedStates = [
+  [], {}, { favorites: 42 }, { favorites: null }, { history: {} },
+  { progress: [] }, { progress: null }, { settings: [] }, { settings: null },
+  { favorites: [{ id: 'missing-name' }] }, { favorites: [null] },
+  { history: ['not-a-media-item'] }, { progress: { broken: {} } },
+  { progress: { broken: { item: { name: 'Movie' }, progress: 'invalid' } } },
+  { settings: { autoplayNext: 'false' } },
+  { version: 99, favorites: [] }
+];
+const savedLibrary = createStorage();
+userState.save(savedLibrary, migrated);
+const beforeInvalidRestore = savedLibrary.getItem(userState.CURRENT_KEY);
+for (const state of malformedStates) {
+  for (const document of [state, { format: userState.BACKUP_FORMAT, version: 1, state }]) {
+    assert.throws(() => {
+      const restored = userState.parseBackup(JSON.stringify(document));
+      userState.save(savedLibrary, restored);
+    }, /not a Harbor data backup|not supported/, JSON.stringify(document));
+    assert.equal(savedLibrary.getItem(userState.CURRENT_KEY), beforeInvalidRestore);
+  }
+}
+assert.throws(() => userState.parseBackup({ format: 'other-backup', favorites: [] }), /not a Harbor data backup/);
+for (const state of [
+  { favorites: [] }, { history: [] }, { progress: {} }, { settings: {} },
+  { version: 1, favorites: migrated.favorites },
+  { progress: { legacy: { item: { name: 'Legacy Movie' }, progress: '0.5', season: 0, episode: '4' } } }
+]) {
+  const expected = userState.normalize(state);
+  assert.deepEqual(userState.parseBackup(JSON.stringify(state)), expected);
+  assert.deepEqual(userState.parseBackup({ format: userState.BACKUP_FORMAT, version: 1, state }), expected);
+}
+assert.deepEqual(userState.parseBackup(userState.createBackup(userState.defaults())), userState.defaults());
+
 process.stdout.write('User-state migration and recovery verified.\n');
