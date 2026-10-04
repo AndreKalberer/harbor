@@ -180,21 +180,59 @@
     };
   }
 
+  function isRecord(value) {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  function validateBackupState(source) {
+    var fields = ['favorites', 'history', 'progress', 'settings'];
+    var owns = function (field) { return Object.prototype.hasOwnProperty.call(source, field); };
+    var invalid = function () { throw new Error('This is not a Harbor data backup.'); };
+    // Imports replace the entire library: do not silently turn malformed data into defaults.
+    if (!isRecord(source) || !fields.some(owns)) invalid();
+    if (owns('version') && source.version !== 1 && source.version !== CURRENT_VERSION) {
+      throw new Error('This Harbor backup version is not supported.');
+    }
+    ['favorites', 'history'].forEach(function (field) {
+      if (!owns(field)) return;
+      if (!Array.isArray(source[field]) || source[field].some(function (item) {
+        return !isRecord(item) || !normalizeMediaItem(item);
+      })) invalid();
+    });
+    if (owns('progress')) {
+      if (!isRecord(source.progress)) invalid();
+      Object.keys(source.progress).forEach(function (key) {
+        var entry = source.progress[key];
+        if (!isRecord(entry) || !isRecord(entry.item) || !normalizeMediaItem(entry.item)) invalid();
+        ['progress', 'season', 'episode', 'updatedAt'].forEach(function (field) {
+          var value = entry[field];
+          if (value === undefined || value === null || value === '') return;
+          if ((typeof value !== 'number' && typeof value !== 'string') || !Number.isFinite(Number(value))) invalid();
+        });
+      });
+    }
+    if (owns('settings')) {
+      if (!isRecord(source.settings)) invalid();
+      Object.keys(defaults().settings).forEach(function (field) {
+        if (Object.prototype.hasOwnProperty.call(source.settings, field) && typeof source.settings[field] !== 'boolean') invalid();
+      });
+    }
+  }
+
   function parseBackup(value) {
     var document = typeof value === 'string' ? JSON.parse(value) : value;
-    if (!document || typeof document !== 'object' || Array.isArray(document)) {
+    if (!isRecord(document)) {
       throw new Error('This is not a Harbor data backup.');
     }
-    if (document.format === BACKUP_FORMAT) {
-      if (document.version !== BACKUP_VERSION || !document.state || typeof document.state !== 'object') {
+    if (Object.prototype.hasOwnProperty.call(document, 'format')) {
+      if (document.format !== BACKUP_FORMAT) throw new Error('This is not a Harbor data backup.');
+      if (document.version !== BACKUP_VERSION) {
         throw new Error('This Harbor backup version is not supported.');
       }
+      validateBackupState(document.state);
       return normalize(document.state);
     }
-    var legacyFields = ['favorites', 'history', 'progress', 'settings'];
-    if (!legacyFields.some(function (field) { return Object.prototype.hasOwnProperty.call(document, field); })) {
-      throw new Error('This is not a Harbor data backup.');
-    }
+    validateBackupState(document);
     return normalize(document);
   }
 
