@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: harbor-artwork:; connect-src 'self' https:; media-src 'self' blob: https:; frame-src data: https://vidlink.pro https://vidsrc.to https://autoembed.to https://multiembed.mov; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: harbor-artwork:; connect-src 'self' https:; media-src 'self' blob: https:; frame-src data: https://vidlink.pro https://vidsrc.to https://autoembed.to https://multiembed.mov https://streamingnow.mov https://vidfast.pro https://vidfast.vc https://111movies.net https://player.vidlove.cc https://player.videasy.net https://player.videasy.to https://vidcore.io https://cinesrc.st https://vaplayer.ru; object-src 'none'; base-uri 'none'; form-action 'none'" />
     <title>Harbor</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -173,7 +173,7 @@
         </div>
 
         <div class="stream-dialog-controls">
-          <select id="stream-server-select" hidden aria-hidden="true" tabindex="-1">
+          <select id="stream-server-select" aria-label="Choose playback server">
             <option value="vidlink">Automatic 1</option>
             <option value="vidsrc">Automatic 2</option>
             <option value="autoembed">Automatic 3</option>
@@ -351,6 +351,8 @@
     <script src="../shared/user-state.js"></script>
     <script src="../shared/artwork-cache.js"></script>
     <script src="../shared/release-channel.js"></script>
+    <script src="../shared/card-artwork.js"></script>
+    <script src="site-artwork.js"></script>
     <script src="catalog-data.js"></script>
     <script src="config.js"></script>
     <script src="../node_modules/hls.js/dist/hls.min.js"></script>

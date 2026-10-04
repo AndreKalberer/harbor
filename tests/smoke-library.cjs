@@ -6,7 +6,6 @@ const port = process.argv[2] || '9333';
 const run = async () => {
   const targets = await fetch(`http://127.0.0.1:${port}/json`).then((response) => response.json());
   const target = targets.find((item) => item.type === 'page'
-    && item.title === 'Harbor'
     && /\/app\/index\.html(?:$|[?#])/i.test(item.url));
   if (!target) throw new Error('Harbor debug target was not found.');
 

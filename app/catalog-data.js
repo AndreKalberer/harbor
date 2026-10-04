@@ -30,6 +30,7 @@
     rating: '8.5',
     sections: ['Movie', 'Action'],
     overview: 'A listless Wade Wilson teams up with a reluctant Wolverine to face an existential threat.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -42,6 +43,7 @@
     rating: '8.9',
     sections: ['Movie', 'Biography'],
     overview: 'The story of J. Robert Oppenheimer role in the development of the atomic bomb.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/neeNHeXjMF5fXoCJRsOmkNGC7q.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -54,6 +56,7 @@
     rating: '9.0',
     sections: ['Movie', 'Animation'],
     overview: 'Miles Morales catapults across the Multiverse to encounter a team of Spider-People.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/kVd3a9YeLGkoeR50jGEXM6EqseS.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -66,7 +69,7 @@
     rating: '8.7',
     sections: ['Movie', 'Sci-Fi'],
     overview: 'A team of explorers travel through a wormhole in space in an attempt to ensure humanity survival.',
-    artworkUrl: 'https://image.tmdb.org/t/p/w780/vgnoBSVzWAV9sNQUORaDGvDp7wx.jpg',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/8sNiAPPYU14PUepFNeSNGUTiHW.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -79,6 +82,7 @@
     rating: '9.0',
     sections: ['Movie', 'Action'],
     overview: 'Batman raises the stakes in his war on crime with the help of Lt. Jim Gordon and District Attorney Harvey Dent.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/9FE5eD92WfVCiivM9Pq9GVSrlWk.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -91,6 +95,7 @@
     rating: '8.8',
     sections: ['Movie', 'Sci-Fi'],
     overview: 'A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -103,6 +108,7 @@
     rating: '8.7',
     sections: ['Movie', 'Action'],
     overview: 'A computer hacker learns about the true nature of reality and his role in the war against its controllers.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/tlm8UkiQsitc8rSuIAscQDCnP8d.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -115,6 +121,7 @@
     rating: '8.8',
     sections: ['Movie', 'Drama'],
     overview: 'An insomniac office worker and a devil-may-care soap maker form an underground fight club.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/c6OLXfKAk5BKeR6broC8pYiCquX.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -127,6 +134,7 @@
     rating: '8.9',
     sections: ['Movie', 'Crime'],
     overview: 'The lives of two mob hitmen, a boxer, a gangster and his wife intertwine in four tales of violence and redemption.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/suaEOtk1N1sgg2MTM7oZd2cfVp3.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -146,6 +154,7 @@
       { season_number: 4, name: 'Season 4', episode_count: 13 },
       { season_number: 5, name: 'Season 5', episode_count: 16 }
     ],
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -158,6 +167,7 @@
     rating: '8.6',
     sections: ['TV Show', 'Sci-Fi'],
     overview: 'A small town uncovers a mystery involving secret experiments and terrifying supernatural forces.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/9P4IIMYY3HifqeruZq0ZZ9g7YUi.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -170,6 +180,7 @@
     rating: '8.9',
     sections: ['TV Show', 'Drama'],
     overview: 'Joel and Ellie traverse a post-pandemic America facing ruthless killers and monsters.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/lY2DhbA7Hy44fAKddr06UrXWWaQ.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -182,7 +193,7 @@
     rating: '8.4',
     sections: ['TV Show', 'Fantasy'],
     overview: 'Seven noble families fight for control of the mythical land of Westeros.',
-    artworkUrl: 'https://image.tmdb.org/t/p/w780/2OMB0ynKlyIenMJWI2Dy9IWT4c.jpg',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/zZqpAXxVSBtxV9qPBcscfXBcL2w.jpg',
     seasons: [
       { season_number: 1, name: 'Season 1', episode_count: 10 },
       { season_number: 2, name: 'Season 2', episode_count: 10 },
@@ -205,6 +216,7 @@
     rating: '8.4',
     sections: ['TV Show', 'Fantasy'],
     overview: 'The Targaryen dynasty at the absolute apex of its power, with more than 15 dragons under their yoke.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/577eXC8wFQT0eUrJcgznSiFPRmk.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -217,6 +229,7 @@
     rating: '8.8',
     sections: ['TV Show', 'History'],
     overview: 'Lord Yoshii Toranaga discovers secrets that could tip the scales of power in feudal Japan.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/bwSmgmd90hCWwqOKQYTEraeOZhJ.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -229,6 +242,7 @@
     rating: '8.0',
     sections: ['TV Show', 'Thriller'],
     overview: 'Hundreds of cash-strapped players accept a strange invitation to compete in children games.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/2meX1nMdScFOoV4370rqHWKmXhY.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -241,6 +255,7 @@
     rating: '8.5',
     sections: ['TV Show', 'Action'],
     overview: 'A group of vigilantes set out to take down corrupt superheroes who abuse their superpowers.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/bq28ajZaoMyzEIm6REelqyqtEDZ.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -253,6 +268,7 @@
     rating: '8.7',
     sections: ['Anime', 'Action'],
     overview: 'Tanjiro Kamado sets out to become a demon slayer to avenge his family and cure his sister.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/3GQKYh6Trm8pxd2AypovoYQf4Ay.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -276,7 +292,7 @@
   },
   {
     id: 'w-21',
-    tmdbId: '94605',
+    tmdbId: '95479',
     name: 'Jujutsu Kaisen',
     category: 'Watch',
     type: 'anime',
@@ -284,11 +300,12 @@
     rating: '8.8',
     sections: ['Anime', 'Supernatural'],
     overview: 'Yuji Itadori enters Tokyo Prefectural Jujutsu High School after swallowing a cursed talisman.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/j2GvamiUMRpPjmNQSSht0Q7Z7e9.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
     id: 'w-22',
-    tmdbId: '209867',
+    tmdbId: '127532',
     name: 'Solo Leveling',
     category: 'Watch',
     type: 'anime',
@@ -296,6 +313,7 @@
     rating: '8.9',
     sections: ['Anime', 'Action'],
     overview: 'Sung Jinwoo finds himself in a mysterious quest enabling him to level up.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/xMNH87maNLt9n2bMDYeI6db5VFm.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -308,11 +326,12 @@
     rating: '8.9',
     sections: ['Anime', 'Adventure'],
     overview: 'Follows the adventures of Monkey D. Luffy and his pirate crew in order to find the greatest treasure.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/2rmK7mnchw9Xr3XdiTFSxTTLXqv.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
     id: 'w-24',
-    tmdbId: '46260',
+    tmdbId: '31910',
     name: 'Naruto: Shippuden',
     category: 'Watch',
     type: 'anime',
@@ -320,6 +339,7 @@
     rating: '8.6',
     sections: ['Anime', 'Ninja'],
     overview: 'Naruto Uzumaki, is a loud, hyperactive, adolescent ninja who constantly searches for approval.',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/swFtS1S5556BFrQNJkwTTmyBFIT.jpg',
     sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
   },
   {
@@ -332,7 +352,7 @@
     rating: '8.4',
     sections: ['Anime', 'Action'],
     overview: 'Ichigo Kurosaki becomes a Soul Reaper and protects the living and the dead from Hollows.',
-    artworkUrl: 'https://image.tmdb.org/t/p/w780/5iVUUnE2tgBPypACYNobCKHagfV.jpg',
+    artworkUrl: 'https://image.tmdb.org/t/p/w780/o0NsbcIvsllg6CJX0FBFY8wWbsn.jpg',
     seasons: [
       { season_number: 1, name: 'Bleach', episode_count: 366 },
       { season_number: 2, name: 'Thousand-Year Blood War', episode_count: 50 }

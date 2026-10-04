@@ -12,7 +12,8 @@ const packagedExecutable = process.env.HARBOR_QA_EXECUTABLE
 const defaultSmokes = [
   'search-smoke.cjs',
   'watch-filters-smoke.cjs',
-  'smoke-library.cjs'
+  'smoke-library.cjs',
+  'card-artwork-smoke.cjs'
 ];
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -41,7 +42,6 @@ const waitForDebugTarget = async (port, child, output) => {
       if (response.ok) {
         const targets = await response.json();
         if (targets.some((target) => target.type === 'page'
-          && target.title === 'Harbor'
           && /\/app\/index\.html(?:$|[?#])/i.test(target.url))) return;
       }
     } catch {
@@ -118,10 +118,20 @@ const runSmoke = async (smokeName) => {
   }
   const executable = packagedExecutable || electronPath;
   const harborArgs = [
+    '--disable-gpu',
+    '--in-process-gpu',
+    '--disable-gpu-sandbox',
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${profileDirectory}`
   ];
-  if (!packagedExecutable) harborArgs.push(projectRoot);
+  if (!packagedExecutable) {
+    const entry = process.env.HARBOR_QA_ENTRYPOINT
+      ? path.resolve(__dirname, process.env.HARBOR_QA_ENTRYPOINT) : projectRoot;
+    if (entry !== projectRoot && (!entry.startsWith(__dirname + path.sep) || !fs.existsSync(entry))) {
+      throw new Error('Unknown desktop QA entry point.');
+    }
+    harborArgs.push(entry);
+  }
   const harbor = spawn(executable, harborArgs, {
     cwd: projectRoot,
     env: {
