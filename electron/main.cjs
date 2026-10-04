@@ -232,6 +232,28 @@ const readDirectoryLinks = () => {
   }
 };
 
+const fetchVidSrcMovies = async (_event, requestedPage) => {
+  const page = requestedPage === undefined ? 1 : Number(requestedPage);
+  if (!Number.isSafeInteger(page) || page < 1) {
+    return { status: 'error', message: 'Movie catalog page must be a positive integer.' };
+  }
+  const endpoint = `https://vidapi.ru/movies/latest/page-${page}.json`;
+  try {
+    const response = await net.fetch(endpoint, {
+      headers: { accept: 'application/json', 'user-agent': `Harbor/${app.getVersion()}` },
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!response.ok) return { status: 'error', message: `Movie catalog returned HTTP ${response.status}.` };
+    const data = await response.json();
+    if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total_pages) || !Number.isSafeInteger(data.total)) {
+      return { status: 'error', message: 'Movie catalog returned an unexpected response.' };
+    }
+    return { status: 'ok', source: 'VidAPI', data };
+  } catch (error) {
+    return { status: 'error', message: error instanceof Error ? error.message : 'VidSrc catalog request failed.' };
+  }
+};
+
 const isAllowedStreamUrl = (candidate) => {
   if (candidate === 'about:blank') return true;
   try {
@@ -492,6 +514,7 @@ app.whenReady().then(() => {
     return { status: 'installing' };
   });
   ipcMain.handle('harbor:get-directory-links', () => readDirectoryLinks());
+  ipcMain.handle('harbor:get-vidsrc-movies', fetchVidSrcMovies);
   ipcMain.handle('harbor:open-directory-link', async (_event, candidate) => {
     if (typeof candidate !== 'string') return { status: 'invalid' };
     const link = readDirectoryLinks().find((entry) => entry.url === candidate);

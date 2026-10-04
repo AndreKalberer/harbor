@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('harbor', {
   launchSavedGame: (libraryId) => ipcRenderer.invoke('harbor:launch-saved-game', libraryId),
   removeGame: (libraryId) => ipcRenderer.invoke('harbor:remove-game', libraryId),
   getDirectoryLinks: () => ipcRenderer.invoke('harbor:get-directory-links'),
+  getVidSrcMovies: (page) => ipcRenderer.invoke('harbor:get-vidsrc-movies', page),
   openDirectoryLink: (url) => ipcRenderer.invoke('harbor:open-directory-link', url),
   exportUserData: (state) => ipcRenderer.invoke('harbor:export-user-data', state),
   importUserData: () => ipcRenderer.invoke('harbor:import-user-data'),

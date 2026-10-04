@@ -580,6 +580,9 @@ label[for]:focus-visible {
 
 .load-more-wrap { display: flex; justify-content: center; padding: 28px 0 4px; }
 .load-more-button { min-width: 190px; }
+.movie-page-navigation { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; margin: 24px 0; color: var(--muted); font-size: 13px; }
+.movie-page-navigation label { display: flex; align-items: center; gap: 12px; }
+.movie-page-navigation input { width: 100px; padding: 9px; color: var(--text); background: #171025; border: 1px solid var(--line); border-radius: 8px; }
 .loading-more-label { color: var(--muted); font-size: 11px; letter-spacing: 0.05em; }
 
 .media-card {
@@ -952,6 +955,7 @@ dialog::backdrop { background: rgba(3, 1, 7, 0.82); backdrop-filter: blur(8px); 
 .playing-indicator { width: 9px; height: 9px; background: var(--coral); border-radius: 50%; box-shadow: 0 0 0 5px rgba(239, 107, 87, 0.14); }
 .stream-ep-tag { padding: 7px 10px; background: rgba(255, 255, 255, 0.1); border-radius: 999px; color: #ddd6e7; font-size: 10px; font-weight: 800; }
 .stream-dialog-controls { display: flex; align-items: center; gap: 7px; }
+.stream-dialog-controls select { min-width: 128px; padding: 8px 28px 8px 10px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px; background: rgba(8, 4, 15, 0.86); color: var(--text); font: inherit; font-size: 11px; font-weight: 800; }
 .btn-stream-action { min-height: 36px; padding-inline: 12px; }
 .btn-stream-action:disabled { opacity: 0.35; cursor: default; }
 .stream-dialog-body { position: relative; height: 100%; }

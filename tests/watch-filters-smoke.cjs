@@ -139,7 +139,7 @@ const run = async () => {
     return { movies, horror, sports, liveTv, liveControls, hlsLoaded: typeof Hls === 'function' };
   })()`);
 
-  if (result.movies.labels.length < 8 || result.movies.active !== 'Popular' || result.movies.hidden
+  if (result.movies.labels.length < 8 || result.movies.active !== 'All movies' || result.movies.hidden
       || result.horror.active !== 'Horror' || result.sports.length < 8 || result.liveTv.length < 8
       || !result.liveControls.visible || result.liveControls.countries < 3 || result.liveControls.languages < 3
       || result.liveControls.cards.join('|') !== 'NBA Basketball' || result.liveControls.guide.join('|') !== 'Live Basketball|Basketball Later This Week'

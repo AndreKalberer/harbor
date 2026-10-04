@@ -406,7 +406,17 @@ playGameButton.addEventListener('click', async () => {
 const TMDB_API_KEY = String(window.HARBOR_CONFIG?.tmdbApiKey || '').trim();
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const seriesMetadataApi = window.HarborSeriesMetadata;
-const watchBrowseApi = window.HarborWatchBrowse;
+const allMovieFilter = { id: 'all-movies', label: 'All movies', source: 'provider-catalog', mediaType: 'movie' };
+const sharedWatchBrowseApi = window.HarborWatchBrowse;
+const watchBrowseApi = {
+  ...sharedWatchBrowseApi,
+  getFilters: section => section === 'Movies'
+    ? [allMovieFilter, ...sharedWatchBrowseApi.getFilters(section)]
+    : sharedWatchBrowseApi.getFilters(section),
+  getFilter: (section, id) => section === 'Movies' && (!id || id === 'all-movies')
+    ? allMovieFilter : sharedWatchBrowseApi.getFilter(section, id),
+  defaultFilterId: section => section === 'Movies' ? 'all-movies' : sharedWatchBrowseApi.defaultFilterId(section)
+};
 
 // Massive Comprehensive Master Media Database (120+ Titles across Watch, Read, Listen, Play)
 const EXPANDED_MASTER_CATALOG = window.HarborCatalogData;
@@ -424,6 +434,12 @@ const STREAM_PROVIDERS = Object.fromEntries(playbackProvidersApi.providers.map((
   }
 ]));
 providerDisclosure.textContent = playbackProvidersApi.providers.map((provider) => provider.name).join(', ') + '.';
+streamServerSelect.replaceChildren(...playbackProvidersApi.providers.map((provider) => {
+  const option = document.createElement('option');
+  option.value = provider.id;
+  option.textContent = provider.name;
+  return option;
+}));
 
 const WATCH_CATALOG = EXPANDED_MASTER_CATALOG.filter((item) => item.category === 'Watch');
 let directoryLinkCatalog = [];
@@ -442,6 +458,7 @@ let activeSeriesSeasons = [];
 let activeProviderKey = 'vidlink';
 let streamProviderAttempts = 0;
 let streamLoadTimeout = null;
+let streamRouteRetryTimeout = null;
 let streamStatusHideTimeout = null;
 let streamChromeHideTimeout = null;
 let searchTimeout = null;
@@ -455,6 +472,10 @@ let watchBrowseLoading = false;
 let watchBrowseLoaded = false;
 let watchBrowseCanLoadMore = false;
 let watchBrowsePage = 1;
+let movieCatalogInfo = null;
+let movieCatalogError = '';
+let movieCatalogRetryPage = 1;
+const loadedProviderMovies = new Map();
 let activeLiveCountry = '';
 let activeLiveLanguage = '';
 let activeLiveWindow = 'now';
@@ -765,6 +786,10 @@ const isCurrentSearchRequest = (term, sequence, scope) => (
 );
 
 const localSearchResults = (term, scope = getSearchScope()) => {
+  if (scope.category === 'Watch' && scope.subcategory === 'Movies' && !TMDB_API_KEY) {
+    return rankSearchResults([...loadedProviderMovies.values(), ...WATCH_CATALOG]
+      .filter(item => itemMatchesSearchScope(item, scope)), term);
+  }
   const source = scope.category === 'Watch' && scope.subcategory !== 'All' && watchBrowseLoaded
     ? [...watchBrowseItems, ...discoveryMediaList]
     : discoveryMediaList;
@@ -871,19 +896,61 @@ const formatLiveChannel = (entry, index, section, filter) => ({
   sources: [{ name: entry.sourceName ? entry.sourceName + ' OFFICIAL FEED' : 'PUBLIC LIVE STREAM', badge: 'badge-relay' }]
 });
 
+const formatVidSrcMovie = (item) => {
+  const id = String(item.tmdb_id || item.tmdbId || item.id || '').replace(/^movie-/, '');
+  if (!/^\d+$/.test(id)) return null;
+  const releaseDate = item.release_date || item.releaseDate || '';
+  const year = String(item.year || releaseDate.slice(0, 4) || '');
+  const rating = Number(item.rating ?? item.vote_average);
+  const poster = item.backdrop_path || item.poster_path || item.poster_url || item.poster;
+  const genres = Array.isArray(item.genres) ? item.genres : String(item.genre || '').split(',').map(value => value.trim()).filter(Boolean);
+  return {
+    id: 'vidsrc-movie-' + id,
+    tmdbId: id,
+    preferredProviderId: 'vidapi',
+    name: item.title || item.name || 'Untitled movie',
+    category: 'Watch',
+    type: 'movie',
+    year,
+    rating: Number.isFinite(rating) ? rating.toFixed(1) : '',
+    sections: ['Movie', ...genres.map((genre) => (
+      typeof genre === 'string' ? genre : genre?.name || TMDB_GENRE_LABELS[genre?.id ?? genre]
+    )).map(genre => genre === 'Science Fiction' ? 'Sci-Fi' : genre)].filter(Boolean),
+    overview: item.overview || 'Listed in the provider movie library. Choose a playback server to try this title.',
+    artworkUrl: poster ? (/^https?:\/\//.test(poster) ? poster : 'https://image.tmdb.org/t/p/w780' + poster) : '',
+    sources: [{ name: 'STREAM HOST', badge: 'badge-stream' }, { name: 'EMBED PROVIDER', badge: 'badge-embed' }]
+  };
+};
+
+const loadVidSrcMovieCatalog = async (page = 1) => {
+  const response = await window.harbor?.getVidSrcMovies?.(page);
+  if (!response || response.status !== 'ok') throw new Error(response?.message || 'VidSrc movie catalog is unavailable.');
+  const data = response.data || {};
+  const raw = Array.isArray(data) ? data : (data.items || data.result || data.movies || data.results || data.data || []);
+  if (!Array.isArray(raw)) throw new Error('Movie catalog returned an unexpected response.');
+  const items = raw.map(formatVidSrcMovie).filter(Boolean);
+  const totalPages = Number(data.total_pages || data.pages || 1);
+  return { items, source: response.source || 'Provider', total: Number(data.total_results || data.total || items.length) || items.length,
+    totalPages, page: Number(data.page || page) || page, canLoadMore: page < totalPages };
+};
+
 const localWatchBrowseItems = () => getSectionItems('Watch', activeSubcategory)
   .filter((item) => itemMatchesWatchFilter(item));
 
-const loadActiveWatchBrowse = async ({ append = false } = {}) => {
+const loadActiveWatchBrowse = async ({ append = false, requestedPage = 1 } = {}) => {
   if (activeCategory !== 'Watch' || activeSubcategory === 'All') return;
   const filter = watchBrowseApi.getFilter(activeSubcategory, activeWatchFilter);
   if (!filter) return;
   const key = currentWatchBrowseKey();
   const generation = ++watchBrowseGeneration;
-  const page = append ? watchBrowsePage + 1 : 1;
+  const page = append ? watchBrowsePage + 1 : requestedPage;
   watchBrowseKey = key;
   watchBrowseLoading = true;
   watchBrowseLoaded = false;
+  if (activeSubcategory === 'Movies') {
+    movieCatalogError = '';
+    movieCatalogRetryPage = page;
+  }
   if (!append) watchBrowseItems = [];
   renderResources();
 
@@ -903,6 +970,12 @@ const loadActiveWatchBrowse = async ({ append = false } = {}) => {
       liveDirectoryFacets = directory.facets || { countries: [], languages: [], sports: [] };
       liveDirectoryTotal = Number(directory.total) || items.length;
       liveDirectoryCached = Boolean(directory.cached);
+    } else if (filter.source === 'provider-catalog' || (activeSubcategory === 'Movies' && !TMDB_API_KEY)) {
+      const result = await loadVidSrcMovieCatalog(page);
+      items = result.items.filter((item) => itemMatchesWatchFilter(item));
+      movieCatalogInfo = { source: result.source, total: result.total, totalPages: result.totalPages };
+      result.items.forEach(item => loadedProviderMovies.set(mediaKey(item), item));
+      canLoadMore = result.canLoadMore;
     } else if (TMDB_API_KEY) {
       const request = watchBrowseApi.buildTmdbRequest(activeSubcategory, activeWatchFilter, page);
       const params = new URLSearchParams({ api_key: TMDB_API_KEY, ...request.params });
@@ -918,7 +991,7 @@ const loadActiveWatchBrowse = async ({ append = false } = {}) => {
       ? [...watchBrowseItems, ...items.filter((item) => !watchBrowseItems.some((existing) => mediaKey(existing) === mediaKey(item)))]
       : items;
     watchBrowsePage = page;
-    watchBrowseCanLoadMore = filter.source === 'tmdb' && canLoadMore;
+    watchBrowseCanLoadMore = (filter.source === 'tmdb' || activeSubcategory === 'Movies') && canLoadMore;
     watchBrowseLoading = false;
     watchBrowseLoaded = true;
     if ((filter.source === 'iptv' || filter.source === 'free-events') && query.trim()) {
@@ -928,7 +1001,10 @@ const loadActiveWatchBrowse = async ({ append = false } = {}) => {
     renderResources();
   } catch (error) {
     if (generation !== watchBrowseGeneration || key !== currentWatchBrowseKey()) return;
-    watchBrowseItems = localWatchBrowseItems();
+    if (activeSubcategory === 'Movies') {
+      movieCatalogError = 'Movie library could not be loaded. ' + (error?.message || 'Try again.');
+      if (!append) watchBrowseItems = localWatchBrowseItems();
+    } else watchBrowseItems = localWatchBrowseItems();
     watchBrowseCanLoadMore = false;
     watchBrowseLoading = false;
     watchBrowseLoaded = true;
@@ -941,7 +1017,7 @@ const loadActiveWatchBrowse = async ({ append = false } = {}) => {
       }
     }
     renderResources();
-    showStatusToast('Live catalog is temporarily unavailable', 'Showing Harbor’s built-in picks instead.');
+    showStatusToast(activeSubcategory === 'Movies' ? 'Movie library unavailable' : 'Live catalog is temporarily unavailable', 'Showing Harbor’s built-in picks instead.');
   }
 };
 
@@ -1233,6 +1309,12 @@ const applySearchBatch = (term, sequence, scope, localResults, batches, totals, 
 const searchGlobalMedia = async (term, sequence, scope, page = 1, append = false) => {
   const normalizedTerm = normalizeSearchText(term);
   if (normalizedTerm.length < 2 || !isCurrentSearchRequest(term, sequence, scope)) return;
+  if (scope.category === 'Watch' && scope.subcategory === 'Movies' && !TMDB_API_KEY) {
+    currentMediaList = localSearchResults(term, scope);
+    searchState = { term: normalizedTerm, loading: false, total: currentMediaList.length, page: 1, canLoadMore: false, partial: false };
+    renderResources();
+    return;
+  }
 
   const cacheKey = getSearchCacheKey(term, scope);
   const cached = !append && page === 1 ? searchCache.get(cacheKey) : null;
@@ -1454,6 +1536,7 @@ const filteredMedia = () => {
 };
 
 const categoryCount = (subcategory) => {
+  if (activeCategory === 'Watch' && subcategory === 'Movies' && movieCatalogInfo) return formatCatalogTotal(movieCatalogInfo.total);
   const catalogTotal = catalogTotals[activeCategory]?.[subcategory];
   if (catalogTotal !== undefined) {
     if (catalogTotal === null) return '';
@@ -1465,6 +1548,14 @@ const categoryCount = (subcategory) => {
 };
 
 const categoryAvailabilityLabel = (visibleCount) => {
+  if (activeCategory === 'Watch' && activeSubcategory === 'Movies') {
+    if (movieCatalogError) return movieCatalogError;
+    if (movieCatalogInfo && (activeWatchFilter === 'all-movies' || !TMDB_API_KEY)) {
+      return activeWatchFilter === 'all-movies'
+        ? 'Showing ' + visibleCount + ' movies · ' + movieCatalogInfo.total.toLocaleString() + ' in the ' + movieCatalogInfo.source + ' library'
+        : 'Showing ' + visibleCount + ' matches from loaded library pages';
+    }
+  }
   if (activeCategory !== 'Watch' && activeCategory !== 'Home') {
     return visibleCount + ' curated ' + (visibleCount === 1 ? 'link' : 'links') + ' from YarrList';
   }
@@ -1685,7 +1776,9 @@ const showStreamChrome = () => {
   clearTimeout(streamChromeHideTimeout);
   inAppStreamDialog.classList.remove('controls-hidden');
   streamChromeHideTimeout = setTimeout(() => {
-    if (inAppStreamDialog.open && streamStatusOverlay.hidden) inAppStreamDialog.classList.add('controls-hidden');
+    if (inAppStreamDialog.open && streamStatusOverlay.hidden && streamPlaybackConfirmed && streamInAppWebview.hidden) {
+      inAppStreamDialog.classList.add('controls-hidden');
+    }
   }, 3200);
 };
 
@@ -1759,20 +1852,70 @@ const stopStreamReadinessPoll = () => {
   streamReadinessPoll = null;
 };
 
+// A provider page may require a Play click, or contain the player in a nested
+// iframe. Reveal it before confirming playback so Harbor never blocks that click.
+const revealEmbeddedPlayer = (interactive = true) => {
+  if (!activeMedia || !inAppStreamDialog.open || streamInAppWebview.hidden) return;
+  if (interactive) {
+    clearTimeout(streamLoadTimeout);
+    streamLoadTimeout = null;
+  }
+  clearTimeout(streamStatusHideTimeout);
+  streamStatusOverlay.hidden = true;
+  streamStatusOverlay.classList.remove('ready', 'failed');
+  showStreamChrome();
+};
+
+const selectedStreamDestinationMatches = (candidate) => {
+  if (!activeMedia || streamInAppWebview.hidden) return false;
+  try {
+    const provider = playbackProvidersApi.providers.find(entry => entry.id === activeProviderKey);
+    if (!provider) return false;
+    const isSeries = activeMedia.type === 'tv' || activeMedia.type === 'anime';
+    const expected = new URL(STREAM_PROVIDERS[activeProviderKey].resolve(activeMedia.tmdbId, isSeries, activeSeason, activeEpisode));
+    const actual = new URL(candidate);
+    if (actual.protocol !== 'https:') return false;
+    if (actual.hostname === expected.hostname) {
+      return actual.pathname.replace(/\/$/, '') === expected.pathname.replace(/\/$/, '')
+        && [...expected.searchParams].every(([key, value]) => actual.searchParams.get(key) === value);
+    }
+    if (!(provider.navigationHosts || []).includes(actual.hostname)) return false;
+    // SuperEmbed encodes its target in an opaque redirect URL. Other current
+    // mirrors retain the movie/episode path, sometimes with an /embed prefix.
+    return actual.hostname === 'streamingnow.mov' || actual.pathname.replace(/\/$/, '').endsWith(expected.pathname.replace(/\/$/, ''));
+  } catch { return false; }
+};
+
 const inspectStreamGuest = async () => {
   stopStreamReadinessPoll();
   if (!activeMedia || !inAppStreamDialog.open || streamInAppWebview.hidden || streamPlaybackConfirmed) return;
   const generation = streamLoadGeneration;
+  const requestedUrl = STREAM_PROVIDERS[activeProviderKey].resolve(activeMedia.tmdbId,
+    activeMedia.type === 'tv' || activeMedia.type === 'anime', activeSeason, activeEpisode);
   try {
     const result = await streamInAppWebview.executeJavaScript(`(() => {
       const media = document.querySelector('video, audio');
       const text = String(document.body?.innerText || '').toLowerCase();
       return {
+        url: location.href,
+        pageReady: document.readyState === 'complete' && location.href !== 'about:blank',
+        interactive: Boolean(media || document.querySelector('iframe, button, input, canvas, [role="button"], .jwplayer, .plyr, .video-js')),
         playing: Boolean(media && !media.paused && media.readyState >= 2),
-        failed: /failed to load|unable to play|playback error|video not found/.test(text)
+        failed: Boolean(media?.error) || /^(403 forbidden|404 not found|500 internal server error)$/.test(document.title.trim().toLowerCase())
+          || (!media && !document.querySelector('iframe') && /failed to load|unable to play|playback error|video not found/.test(text))
       };
     })()`, true);
     if (generation !== streamLoadGeneration || !inAppStreamDialog.open) return;
+    if (!result?.url || result.url === 'about:blank') return;
+    if (!selectedStreamDestinationMatches(result.url)) {
+      // A just-created webview can finish its initial URL after the user has
+      // already selected another server. Correct that navigation before reveal.
+      void streamInAppWebview.loadURL(requestedUrl).catch(error => {
+        if (error?.code === 'ERR_ABORTED' || error?.errno === -3 || /ERR_ABORTED/.test(error?.message || '')) return;
+        if (generation === streamLoadGeneration && inAppStreamDialog.open) tryNextStreamRoute();
+      });
+      return;
+    }
     if (result?.playing) {
       markStreamReady();
       return;
@@ -1781,6 +1924,7 @@ const inspectStreamGuest = async () => {
       tryNextStreamRoute();
       return;
     }
+    if (result?.pageReady) revealEmbeddedPlayer(result.interactive !== false);
   } catch {
     // The provider may still be initializing; the bounded route timeout remains authoritative.
   }
@@ -1790,20 +1934,24 @@ const inspectStreamGuest = async () => {
 };
 
 const tryNextStreamRoute = () => {
+  if (streamRouteRetryTimeout) return;
   clearTimeout(streamLoadTimeout);
   streamLoadTimeout = null;
   if (!activeMedia || !inAppStreamDialog.open || activeMedia.directStream) return;
+  stopStreamReadinessPoll();
+  streamLoadGeneration++;
   const providerKeys = Object.keys(STREAM_PROVIDERS);
   streamProviderAttempts += 1;
   if (streamProviderAttempts >= providerKeys.length) {
-    showStreamStatus('Unable to play right now', 'Try again in a moment or choose another title.', true);
+    showStreamStatus('No server responded', 'Try a different server from the dropdown, retry, or choose another title.', true);
     return;
   }
   const currentIndex = Math.max(0, providerKeys.indexOf(activeProviderKey));
   activeProviderKey = providerKeys[(currentIndex + 1) % providerKeys.length];
   streamServerSelect.value = activeProviderKey;
   showStreamStatus(activeMedia.name, 'One moment — Harbor is getting it ready.');
-  setTimeout(() => {
+  streamRouteRetryTimeout = setTimeout(() => {
+    streamRouteRetryTimeout = null;
     if (inAppStreamDialog.open) loadStreamSource();
   }, 180);
 };
@@ -1830,9 +1978,16 @@ const tryNextLiveStream = () => {
 
 // Open In-App Streaming Player
 const startStreamPlayback = async (item, season = 1, episode = 1) => {
+  clearTimeout(streamRouteRetryTimeout);
+  streamRouteRetryTimeout = null;
+  clearTimeout(streamLoadTimeout);
+  streamLoadTimeout = null;
+  streamLoadGeneration++;
   activeMedia = item;
   activeSeason = season;
   activeEpisode = episode;
+  const preferredProvider = item.preferredProviderId || (String(item.id || '').startsWith('vidsrc-movie-') ? 'vidapi' : null);
+  if (preferredProvider && STREAM_PROVIDERS[preferredProvider]) activeProviderKey = preferredProvider;
   activeSeriesSeasons = [];
   streamPlaybackStartedAt = Date.now();
   streamPlaybackConfirmed = false;
@@ -1873,6 +2028,8 @@ const destroyStreamHls = () => {
 const loadStreamSource = () => {
   if (!activeMedia) return;
   streamLoadGeneration++;
+  clearTimeout(streamRouteRetryTimeout);
+  streamRouteRetryTimeout = null;
   clearTimeout(streamLoadTimeout);
   streamLoadTimeout = null;
   stopStreamReadinessPoll();
@@ -1885,7 +2042,7 @@ const loadStreamSource = () => {
     activeMedia.name,
     isSeries
       ? (season?.name || ('Season ' + activeSeason)) + ' · Episode ' + activeEpisode
-      : 'Getting your movie ready…'
+      : 'Loading ' + (STREAM_PROVIDERS[activeProviderKey]?.name || 'playback server') + '…'
   );
 
   const directStream = activeMedia.type === 'live' ? currentLiveStream()?.url : activeMedia.directStream;
@@ -2418,7 +2575,12 @@ const buildRail = (title, items, options = {}) => {
     seeAll.type = 'button';
     seeAll.addEventListener('click', () => {
       activeSubcategory = options.subcategory;
+      if (activeCategory === 'Watch' && activeSubcategory === 'Movies') {
+        activeWatchFilter = 'all-movies';
+        resetWatchBrowseState();
+      }
       renderResources();
+      if (activeCategory === 'Watch' && activeSubcategory === 'Movies') void loadActiveWatchBrowse();
       window.scrollTo({ top: document.querySelector('.browse-shell').offsetTop - 78, behavior: 'smooth' });
     });
     heading.append(seeAll);
@@ -2539,13 +2701,38 @@ const renderResources = () => {
       ? watchBrowseApi.getFilter(activeSubcategory, activeWatchFilter)
       : null;
     headingCopy.append(
-      createElement('h2', '', activeFilter ? activeFilter.label + ' ' + activeSubcategory : activeSubcategory),
+      createElement('h2', '', activeFilter?.id === 'all-movies' ? 'All movies' : activeFilter ? activeFilter.label + ' ' + activeSubcategory : activeSubcategory),
       createElement('p', '', watchBrowseLoading ? 'Loading the latest picks…' : categoryAvailabilityLabel(visible.length))
     );
     heading.append(headingCopy);
     const grid = createElement('div', 'category-grid');
     grid.append(...visible.map(buildCard));
     resultsSection.append(heading, grid);
+    if (activeCategory === 'Watch' && activeSubcategory === 'Movies' && movieCatalogInfo && !watchBrowseLoading && !movieCatalogError
+      && (activeWatchFilter === 'all-movies' || !TMDB_API_KEY)) {
+      const navigation = createElement('form', 'movie-page-navigation');
+      const pageLabel = createElement('label', '', 'Page ' + watchBrowsePage + ' of ' + movieCatalogInfo.totalPages.toLocaleString());
+      const pageInput = Object.assign(document.createElement('input'), {
+        type: 'number', min: '1', max: String(movieCatalogInfo.totalPages), value: String(watchBrowsePage), required: true
+      });
+      pageInput.setAttribute('aria-label', 'Movie library page');
+      pageLabel.append(pageInput);
+      const go = Object.assign(createElement('button', 'button-secondary', 'Go to page'), {type:'submit'});
+      navigation.addEventListener('submit', event => {
+        event.preventDefault();
+        const targetPage = Number(pageInput.value);
+        if (!watchBrowseLoading && Number.isSafeInteger(targetPage) && targetPage >= 1 && targetPage <= movieCatalogInfo.totalPages) {
+          void loadActiveWatchBrowse({requestedPage:targetPage});
+        }
+      });
+      navigation.append(pageLabel,go);
+      resultsSection.append(navigation);
+    }
+    if (activeCategory === 'Watch' && activeSubcategory === 'Movies' && movieCatalogError) {
+      const retry = Object.assign(createElement('button', 'button-secondary', 'Retry movie library'), {type:'button'});
+      retry.addEventListener('click', () => void loadActiveWatchBrowse({requestedPage:movieCatalogRetryPage}));
+      resultsSection.append(retry);
+    }
     if (watchBrowseCanLoadMore && !watchBrowseLoading) {
       const moreWrap = createElement('div', 'load-more-wrap');
       const moreButton = Object.assign(createElement('button', 'button-secondary load-more-button', 'Show more'), { type: 'button' });
@@ -2558,7 +2745,7 @@ const renderResources = () => {
 
   resourceList.replaceChildren(...rails);
 
-  searchInput.placeholder = 'Search ' + searchScopeName;
+  searchInput.placeholder = activeCategory === 'Watch' && activeSubcategory === 'Movies' && !TMDB_API_KEY ? 'Search loaded movies' : 'Search ' + searchScopeName;
   searchInput.setAttribute('aria-label', 'Search ' + searchScopeName);
   heroKicker.textContent = query.trim() ? 'Search ' + searchScopeName : config.kicker;
   directoryTitle.textContent = query.trim()
@@ -2595,7 +2782,8 @@ const renderResources = () => {
     ? 'Some catalog sources could not be reached. Try again in a moment or explore another category.'
     : 'Try a different search or explore another category.';
   emptyState.hidden = visible.length > 0 || searchState.loading || watchBrowseLoading;
-  resourceList.hidden = visible.length === 0 && !watchBrowseLoading;
+  resourceList.hidden = visible.length === 0 && !watchBrowseLoading
+    && !(activeCategory === 'Watch' && activeSubcategory === 'Movies' && (movieCatalogInfo || movieCatalogError));
   clearButton.hidden = !query;
   catalogCount.textContent = query.trim()
     ? (searchState.loading
@@ -2603,7 +2791,9 @@ const renderResources = () => {
       : (formattedSearchTotal || visible.length) + ' ' + searchScopeName + ' ' + ((searchState.total || visible.length) === 1 ? 'match' : 'matches') + (searchState.partial ? ' · partial results' : ''))
     : (activeCategory === 'Listen' || activeCategory === 'Read' || activeCategory === 'Play'
       ? getSectionItems(activeCategory).length + ' curated links from YarrList'
-      : (watchBrowseLoading ? 'Loading the latest catalog…' : 'Millions of movies, shows, and live channels to explore'));
+      : (activeCategory === 'Watch' && activeSubcategory === 'Movies' && movieCatalogInfo
+        ? categoryAvailabilityLabel(visible.length)
+        : (watchBrowseLoading ? 'Loading the latest catalog…' : 'Millions of movies, shows, and live channels to explore')));
   renderCategories();
 };
 
@@ -2674,6 +2864,7 @@ streamServerSelect.addEventListener('change', (e) => {
 });
 
 streamInAppWebview.addEventListener('dom-ready', inspectStreamGuest);
+streamInAppWebview.addEventListener('did-finish-load', inspectStreamGuest);
 streamInAppWebview.addEventListener('did-fail-load', (event) => {
   if (event.errorCode === -3 || event.isMainFrame === false) return;
   tryNextStreamRoute();
@@ -2720,6 +2911,8 @@ closeStreamDialogBtn.addEventListener('click', () => {
   saveActiveStreamProgress();
   clearTimeout(streamLoadTimeout);
   streamLoadTimeout = null;
+  clearTimeout(streamRouteRetryTimeout);
+  streamRouteRetryTimeout = null;
   clearTimeout(streamStatusHideTimeout);
   clearTimeout(streamChromeHideTimeout);
   stopStreamReadinessPoll();
@@ -2964,6 +3157,8 @@ document.addEventListener('keydown', (event) => {
       saveActiveStreamProgress();
       clearTimeout(streamLoadTimeout);
       streamLoadTimeout = null;
+      clearTimeout(streamRouteRetryTimeout);
+      streamRouteRetryTimeout = null;
       stopStreamReadinessPoll();
       streamPlaybackConfirmed = false;
       streamLoadGeneration++;
