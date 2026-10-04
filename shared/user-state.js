@@ -119,7 +119,7 @@
 
   function normalizeProgress(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-    return Object.keys(value).slice(0, FAVORITES_LIMIT).reduce(function (entries, key) {
+    var normalized = Object.keys(value).reduce(function (entries, key) {
       var source = value[key];
       var item = normalizeMediaItem(source && source.item);
       if (!item) return entries;
@@ -130,6 +130,12 @@
         episode: Math.max(1, Math.floor(finiteNumber(source.episode, 1))),
         updatedAt: Math.max(0, finiteNumber(source.updatedAt, 0))
       };
+      return entries;
+    }, {});
+    return Object.keys(normalized).sort(function (left, right) {
+      return normalized[right].updatedAt - normalized[left].updatedAt;
+    }).slice(0, FAVORITES_LIMIT).reduce(function (entries, key) {
+      entries[key] = normalized[key];
       return entries;
     }, {});
   }

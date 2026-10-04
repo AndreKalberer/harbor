@@ -67,6 +67,43 @@ assert.equal(recoveryCopy.raw, '{broken');
 const empty = userState.load(createStorage());
 assert.deepEqual(empty, userState.defaults());
 
+// Following the renderer's append-then-save flow must retain newly watched titles
+// when the device already has 120 progress entries.
+const progressStorage = createStorage();
+let watchedState = userState.defaults();
+for (let index = 0; index < 121; index += 1) {
+  const id = `watched-${index}`;
+  watchedState.progress[id] = {
+    item: { id, name: `Watched title ${index}` },
+    progress: 0.5,
+    season: 2,
+    episode: 3,
+    updatedAt: index + 1
+  };
+  watchedState = userState.save(progressStorage, watchedState);
+}
+const reloadedProgress = userState.load(progressStorage).progress;
+assert.equal(Object.keys(reloadedProgress).length, 120);
+assert.equal(reloadedProgress['watched-0'], undefined);
+assert.equal(reloadedProgress['watched-120'].progress, 0.5);
+assert.equal(reloadedProgress['watched-120'].season, 2);
+assert.equal(reloadedProgress['watched-120'].episode, 3);
+
+// Revisiting an older title makes it recent, even if its key was inserted first.
+watchedState.progress['watched-1'].updatedAt = 200;
+watchedState.progress['watched-121'] = {
+  item: { id: 'watched-121', name: 'Another title' }, progress: 0.25, updatedAt: 201
+};
+const refreshedProgress = userState.save(progressStorage, watchedState).progress;
+assert.ok(refreshedProgress['watched-1']);
+assert.ok(refreshedProgress['watched-121']);
+assert.equal(refreshedProgress['watched-2'], undefined);
+
+// Invalid entries do not consume capacity before valid recent entries are read.
+const invalidProgress = Object.fromEntries(Array.from({ length: 120 }, (_, index) => [`invalid-${index}`, {}]));
+invalidProgress.valid = { item: { name: 'Valid title' }, progress: 0.5, updatedAt: '300' };
+assert.equal(userState.normalize({ progress: invalidProgress }).progress.valid.updatedAt, 300);
+
 const backup = userState.createBackup(migrated, '2.1.0');
 assert.equal(backup.format, 'harbor-user-data');
 assert.equal(backup.version, 1);

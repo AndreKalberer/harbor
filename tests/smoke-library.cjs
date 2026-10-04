@@ -62,6 +62,35 @@ const run = async () => {
       }
     }, 25);
   })`);
+  const progressRetention = await evaluate(`(() => {
+    const original = userState;
+    const originalNow = Date.now;
+    let timestamp = originalNow();
+    try {
+      Date.now = () => ++timestamp;
+      userState = userStateApi.defaults();
+      for (let index = 0; index < 121; index += 1) {
+        recordProgress({ id: 'capacity-' + index, name: 'Capacity title ' + index }, 0.5, { season: 2, episode: 3 });
+      }
+      const stored = userStateApi.load(localStorage).progress;
+      return {
+        retained: Object.keys(stored).length,
+        oldestPresent: Boolean(stored['capacity-0']),
+        newest: stored['capacity-120'],
+        continueNewest: continueEntries().some((entry) => entry.item.id === 'capacity-120')
+      };
+    } finally {
+      Date.now = originalNow;
+      userState = original;
+      persistUserState();
+    }
+  })()`);
+  if (progressRetention.retained !== 120 || progressRetention.oldestPresent
+      || progressRetention.newest?.progress !== 0.5 || progressRetention.newest?.season !== 2
+      || progressRetention.newest?.episode !== 3 || !progressRetention.continueNewest) {
+    throw new Error('Playback progress at capacity failed: ' + JSON.stringify(progressRetention));
+  }
+  process.stdout.write('Playback progress at capacity: ' + JSON.stringify(progressRetention) + '\n');
   const shell = await evaluate(`({
     title: document.title,
     version: document.querySelector('#app-version').textContent,
