@@ -1077,7 +1077,15 @@
     if (direction === 'down' && current.parentElement === subcategoryRow) return watchFilterRow.hidden ? cardGrid.querySelector('.media-card') : watchFilterRow.querySelector('.active') || watchFilterRow.querySelector('.focusable');
     if (direction === 'down' && current.parentElement === watchFilterRow) return liveFilterRow.hidden ? cardGrid.querySelector('.media-card') : liveCountrySelect;
     if (direction === 'down' && current === liveFilterDone) return cardGrid.querySelector('.media-card');
-    if (direction === 'up' && current.classList.contains('media-card')) return !liveFilterRow.hidden ? liveFilterDone : watchFilterRow.hidden ? subcategoryRow.querySelector('.active') || subcategoryRow.querySelector('.focusable') : watchFilterRow.querySelector('.active') || watchFilterRow.querySelector('.focusable');
+    if (direction === 'up' && current.classList.contains('media-card')) {
+      var currentTop = current.offsetTop;
+      var hasPreviousRow = Array.prototype.some.call(cardGrid.querySelectorAll('.media-card'), function (card) {
+        return card.offsetWidth > 0 && card.offsetHeight > 0 && card.offsetTop < currentTop - 4;
+      });
+      // Layout offsets ignore focus scaling, so transitions cannot create a false earlier row.
+      if (hasPreviousRow) return null;
+      return !liveFilterRow.hidden ? liveFilterDone : watchFilterRow.hidden ? subcategoryRow.querySelector('.active') || subcategoryRow.querySelector('.focusable') : watchFilterRow.querySelector('.active') || watchFilterRow.querySelector('.focusable');
+    }
     if (direction === 'up' && current.closest('.live-filter-row')) return watchFilterRow.querySelector('.active') || watchFilterRow.querySelector('.focusable');
     if (direction === 'up' && current.parentElement === watchFilterRow) return subcategoryRow.querySelector('.active') || subcategoryRow.querySelector('.focusable');
     if (direction === 'up' && current.parentElement === subcategoryRow) return heroPlay.hidden ? document.querySelector('[data-action="watch"]') : heroPlay;

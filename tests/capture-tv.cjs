@@ -89,6 +89,48 @@ const run = async () => {
       || shell.horizontalOverflow || shell.playerSandbox !== null || shell.playerTabIndex !== 0 || !shell.playerFocusable) {
     throw new Error('TV shell regression failed: ' + JSON.stringify(shell));
   }
+  const gridNavigation = await evaluate(`(async () => {
+    const cards = [...document.querySelectorAll('#card-grid .media-card')];
+    const first = cards[0];
+    const secondRow = cards.find((card) => card.offsetTop > first.offsetTop + 4);
+    if (!secondRow) throw new Error('TV grid fixture must span at least two rows.');
+    first.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 40, bubbles: true }));
+    const downReachedSecondRow = document.activeElement === secondRow;
+    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 38, bubbles: true }));
+    const upReturnedToFirstRow = document.activeElement === first;
+    first.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 38, bubbles: true }));
+    const upReachedCategory = document.activeElement === document.querySelector('#subcategory-row .active');
+    first.focus();
+    // Finish the first card's focus animation before testing a quick Right/Up sequence.
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 39, bubbles: true }));
+    const rightReachedSameRow = document.activeElement === cards[1];
+    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 38, bubbles: true }));
+    const animatedUpReachedCategory = document.activeElement === document.querySelector('#subcategory-row .active');
+    return { downReachedSecondRow, upReturnedToFirstRow, upReachedCategory, rightReachedSameRow, animatedUpReachedCategory };
+  })()`);
+  if (!gridNavigation.downReachedSecondRow || !gridNavigation.upReturnedToFirstRow || !gridNavigation.upReachedCategory || !gridNavigation.rightReachedSameRow || !gridNavigation.animatedUpReachedCategory) {
+    throw new Error('TV grid row navigation failed: ' + JSON.stringify(gridNavigation));
+  }
+  const animatedFilterNavigation = await evaluate(`(async () => {
+    [...document.querySelectorAll('#subcategory-row button')].find((button) => button.textContent.trim() === 'Movies').click();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const cards = [...document.querySelectorAll('#card-grid .media-card')];
+    cards[0].focus();
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 39, bubbles: true }));
+    const rightReachedSameRow = document.activeElement === cards[1];
+    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 38, bubbles: true }));
+    const upReachedActiveFilter = document.activeElement === document.querySelector('#watch-filter-row .active');
+    document.querySelector('[data-action="watch"]').click();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    return { rightReachedSameRow, upReachedActiveFilter };
+  })()`);
+  if (!animatedFilterNavigation.rightReachedSameRow || !animatedFilterNavigation.upReachedActiveFilter) {
+    throw new Error('TV animated first-row filter navigation failed: ' + JSON.stringify(animatedFilterNavigation));
+  }
   const watchFilters = await evaluate(`(() => {
     const category = (name) => [...document.querySelectorAll('#subcategory-row button')].find((button) => button.textContent.trim() === name);
     const sports = category('Sports');
@@ -105,13 +147,15 @@ const run = async () => {
     document.querySelector('#live-filter-done').focus();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
     const downReachedLiveCard = document.activeElement === document.querySelector('#card-grid .media-card');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', keyCode: 38, bubbles: true }));
+    const upReachedLiveFacet = document.activeElement === document.querySelector('#live-filter-done');
     category('Live TV').click();
     const liveFilters = [...document.querySelectorAll('#watch-filter-row button')].map((button) => button.textContent.trim());
     document.querySelector('[data-action="watch"]').click();
     const liveWindows = [...document.querySelectorAll('.live-window-switch button')].map((button) => button.textContent.trim());
-    return { sportsFilters, liveFilters, liveWindows, downReachedFilter, downReachedLiveFacet, downReachedLiveCard };
+    return { sportsFilters, liveFilters, liveWindows, downReachedFilter, downReachedLiveFacet, downReachedLiveCard, upReachedLiveFacet };
   })()`);
-  if (watchFilters.sportsFilters.length < 8 || watchFilters.liveFilters.length < 8 || watchFilters.liveWindows.join('|') !== '● Live Now|Live Soon' || !watchFilters.downReachedFilter || !watchFilters.downReachedLiveFacet || !watchFilters.downReachedLiveCard) {
+  if (watchFilters.sportsFilters.length < 8 || watchFilters.liveFilters.length < 8 || watchFilters.liveWindows.join('|') !== '● Live Now|Live Soon' || !watchFilters.downReachedFilter || !watchFilters.downReachedLiveFacet || !watchFilters.downReachedLiveCard || !watchFilters.upReachedLiveFacet) {
     throw new Error('TV Watch filters or D-pad lane failed: ' + JSON.stringify(watchFilters));
   }
   const liveGuide = await evaluate(`(async () => {
@@ -223,7 +267,7 @@ const run = async () => {
     delete window.__originalTvState;
   })()`);
   socket.close();
-  process.stdout.write(JSON.stringify({ shell, watchFilters, liveGuide, searchNavigation, interaction, bleach }, null, 2) + '\n');
+  process.stdout.write(JSON.stringify({ shell, gridNavigation, animatedFilterNavigation, watchFilters, liveGuide, searchNavigation, interaction, bleach }, null, 2) + '\n');
 };
 
 run().catch((error) => {
