@@ -1,3 +1,4 @@
+const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -121,6 +122,86 @@ const run = async () => {
     };
   })()`);
 
+  assert.equal(epub.status, 'Chapter 1 of 1');
+  assert.equal(epub.scripts + epub.eventAttributes + epub.remoteImages, 0);
+  const epubNavigation = await evaluate(`(async () => {
+    const zip = new JSZip();
+    zip.file('mimetype', 'application/epub+zip');
+    zip.file('META-INF/container.xml', '<container><rootfiles><rootfile full-path="OEBPS/content.opf"/></rootfiles></container>');
+    // Manifest order deliberately differs from the spine's reading order.
+    zip.file('OEBPS/content.opf', '<package><manifest><item id="c3" href="third.xhtml"/><item id="c1" href="first.xhtml"/><item id="c2" href="second.xhtml"/></manifest><spine><itemref idref="c1"/><itemref idref="c2"/><itemref idref="c3"/></spine></package>');
+    zip.file('OEBPS/first.xhtml', '<html><body><h1>First chapter</h1></body></html>');
+    zip.file('OEBPS/second.xhtml', '<html><body><h1>Second chapter</h1><script>window.epubUnsafe = true</script><p onclick="alert(1)">Safe text</p><img src="https://example.com/tracker.png"></body></html>');
+    zip.file('OEBPS/third.xhtml', '<html><body><h1>Third chapter</h1></body></html>');
+    const makeBook = async (name) => new File([await zip.generateAsync({ type: 'blob', mimeType: 'application/epub+zip' })], name, { type: 'application/epub+zip' });
+    const book = await makeBook('three-chapters.epub');
+    const snapshot = () => ({ heading: epubDocument.querySelector('h1')?.textContent, status: pageStatus.textContent, previous: previousPageButton.disabled, next: nextPageButton.disabled });
+    const clickAndWait = async (button, status) => {
+      button.click();
+      const deadline = Date.now() + 2000;
+      while (pageStatus.textContent !== status) {
+        if (Date.now() > deadline) throw new Error('EPUB navigation did not reach ' + status);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    };
+    await openLocalFile(book);
+    const first = snapshot();
+    previousPageButton.click();
+    const firstBoundary = snapshot();
+    await clickAndWait(nextPageButton, 'Chapter 2 of 3');
+    const second = { ...snapshot(), unsafe: epubDocument.querySelectorAll('script, [onclick], img[src^="http"]').length };
+    await clickAndWait(nextPageButton, 'Chapter 3 of 3');
+    const last = snapshot();
+    nextPageButton.click();
+    const lastBoundary = snapshot();
+    await clickAndWait(previousPageButton, 'Chapter 2 of 3');
+    const backwards = snapshot();
+    await openLocalFile(book);
+    const reopened = snapshot();
+    // Repeated clicks during decompression must not skip a chapter.
+    nextPageButton.click();
+    nextPageButton.click();
+    const deadline = Date.now() + 2000;
+    while (pageStatus.textContent !== 'Chapter 2 of 3') {
+      if (Date.now() > deadline) throw new Error('Rapid EPUB navigation did not finish.');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    const rapid = snapshot();
+    resetLocalLibrary();
+    const cleared = { mode: readerMode, text: epubDocument.textContent, toolbarHidden: readerToolbar.hidden };
+    // A missing later chapter retains the last successfully rendered chapter.
+    zip.remove('OEBPS/second.xhtml');
+    await openLocalFile(await makeBook('missing-chapter.epub'));
+    nextPageButton.click();
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    const missing = { ...snapshot(), error: mediaDetails.textContent };
+    await openLocalFile(book);
+    nextPageButton.click();
+    resetLocalLibrary();
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    const stale = { mode: readerMode, text: epubDocument.textContent, toolbarHidden: readerToolbar.hidden };
+    const opening = openLocalFile(book);
+    resetLocalLibrary();
+    await opening;
+    const staleOpen = { mode: readerMode, text: epubDocument.textContent, toolbarHidden: readerToolbar.hidden };
+    return { first, firstBoundary, second, last, lastBoundary, backwards, reopened, rapid, cleared, missing, stale, staleOpen };
+  })()`);
+  const firstChapter = { heading: 'First chapter', status: 'Chapter 1 of 3', previous: true, next: false };
+  const secondChapter = { heading: 'Second chapter', status: 'Chapter 2 of 3', previous: false, next: false };
+  const lastChapter = { heading: 'Third chapter', status: 'Chapter 3 of 3', previous: false, next: true };
+  assert.deepEqual(epubNavigation.first, firstChapter);
+  assert.deepEqual(epubNavigation.firstBoundary, firstChapter);
+  assert.deepEqual(epubNavigation.second, { ...secondChapter, unsafe: 0 });
+  assert.deepEqual(epubNavigation.last, lastChapter);
+  assert.deepEqual(epubNavigation.lastBoundary, lastChapter);
+  assert.deepEqual(epubNavigation.backwards, secondChapter);
+  assert.deepEqual(epubNavigation.reopened, firstChapter);
+  assert.deepEqual(epubNavigation.rapid, secondChapter);
+  assert.deepEqual(epubNavigation.cleared, { mode: 'empty', text: '', toolbarHidden: true });
+  assert.deepEqual(epubNavigation.missing, { ...firstChapter, error: 'EPUB chapter content is missing.' });
+  assert.deepEqual(epubNavigation.stale, { mode: 'empty', text: '', toolbarHidden: true });
+  assert.deepEqual(epubNavigation.staleOpen, { mode: 'empty', text: '', toolbarHidden: true });
+
   const comic = await evaluate(`(async () => {
     const zip = new JSZip();
     const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
@@ -162,7 +243,7 @@ const run = async () => {
     fs.writeFileSync(path.join(artifactDirectory, 'library-smoke.png'), Buffer.from(screenshot.data, 'base64'));
   }
   socket.close();
-  process.stdout.write(`${JSON.stringify({ shell, onboarding, epub, comic, pdf, gameBoundary, savedGameBoundary }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ shell, onboarding, epub, epubNavigation, comic, pdf, gameBoundary, savedGameBoundary }, null, 2)}\n`);
 };
 
 run().catch((error) => {
