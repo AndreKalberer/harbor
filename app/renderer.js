@@ -133,6 +133,8 @@ let pdfZoom = 1.15;
 let comicEntries = [];
 let comicArchive = null;
 let comicPageNumber = 0;
+let epubState = null;
+let localLibraryGeneration = 0;
 let selectedGameToken = null;
 const activeObjectUrls = new Set();
 
@@ -168,6 +170,7 @@ const hideLibraryViews = () => {
 };
 
 const resetLocalLibrary = () => {
+  localLibraryGeneration += 1;
   videoPlayer.pause();
   videoPlayer.removeAttribute('src');
   audioPlayer.pause();
@@ -176,6 +179,8 @@ const resetLocalLibrary = () => {
   pdfDocument = null;
   comicArchive = null;
   comicEntries = [];
+  epubState = null;
+  epubDocument.replaceChildren();
   readerMode = 'empty';
   hideLibraryViews();
   playerPlaceholder.hidden = false;
@@ -227,6 +232,7 @@ const sanitizeBookDocument = (bookDocument) => {
 };
 
 const openEpub = async (file) => {
+  const generation = localLibraryGeneration;
   const archive = await JSZip.loadAsync(await file.arrayBuffer());
   const containerEntry = archive.file(/META-INF\/container\.xml$/i)[0];
   if (!containerEntry) throw new Error('EPUB container metadata is missing.');
@@ -245,20 +251,54 @@ const openEpub = async (file) => {
     .map((item) => manifest.get(item.getAttribute('idref')))
     .filter(Boolean)
     .map((chapter) => packageDirectory + chapter);
-  const firstChapter = archive.file(chapters[0]);
-  if (!firstChapter) throw new Error('EPUB chapter content is missing.');
-  const chapterDocument = sanitizeBookDocument(
-    parser.parseFromString(await firstChapter.async('string'), 'text/html')
-  );
-  epubDocument.replaceChildren(
-    ...[...chapterDocument.body.childNodes].map((node) => document.importNode(node, true))
-  );
+  if (!chapters.length) throw new Error('EPUB chapter content is missing.');
+  if (generation !== localLibraryGeneration) return;
+  const state = { archive, chapters, chapterNumber: 0, loading: false };
+  epubState = state;
   readerMode = 'epub';
+  await renderEpubChapter(0);
+  if (epubState !== state || readerMode !== 'epub') return;
   readerToolbar.hidden = false;
   epubViewerShell.hidden = false;
-  pageStatus.textContent = `Chapter 1 of ${Math.max(chapters.length, 1)}`;
+};
+
+const renderEpubChapter = async (chapterNumber) => {
+  const state = epubState;
+  if (!state || state.loading || chapterNumber < 0 || chapterNumber >= state.chapters.length) return;
+  state.loading = true;
   previousPageButton.disabled = true;
-  nextPageButton.disabled = chapters.length <= 1;
+  nextPageButton.disabled = true;
+  try {
+    const chapter = state.archive.file(state.chapters[chapterNumber]);
+    if (!chapter) throw new Error('EPUB chapter content is missing.');
+    const source = await chapter.async('string');
+    if (epubState !== state || readerMode !== 'epub') return;
+    const chapterDocument = sanitizeBookDocument(new DOMParser().parseFromString(source, 'text/html'));
+    epubDocument.replaceChildren(
+      ...[...chapterDocument.body.childNodes].map((node) => document.importNode(node, true))
+    );
+    state.chapterNumber = chapterNumber;
+    epubViewerShell.scrollTop = 0;
+    pageStatus.textContent = `Chapter ${chapterNumber + 1} of ${state.chapters.length}`;
+  } finally {
+    state.loading = false;
+    if (epubState === state && readerMode === 'epub') {
+      previousPageButton.disabled = state.chapterNumber <= 0;
+      nextPageButton.disabled = state.chapterNumber >= state.chapters.length - 1;
+    }
+  }
+};
+
+const navigateEpubChapter = async (direction) => {
+  const state = epubState;
+  if (!state) return;
+  try {
+    await renderEpubChapter(state.chapterNumber + direction);
+  } catch (error) {
+    if (epubState === state && readerMode === 'epub') {
+      mediaDetails.textContent = error.message || 'Could not open this EPUB chapter.';
+    }
+  }
 };
 
 const naturalNameSort = (left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
@@ -289,8 +329,11 @@ const openComic = async (file) => {
 
 const openLocalFile = async (file) => {
   if (!file) return;
+  localLibraryGeneration += 1;
   hideLibraryViews();
   releaseObjectUrls();
+  epubState = null;
+  epubDocument.replaceChildren();
   clearMediaButton.hidden = false;
   mediaName.textContent = file.name;
   mediaDetails.textContent = `${file.type || 'Local file'} · ${formatFileSize(file.size)}`;
@@ -368,6 +411,8 @@ previousPageButton.addEventListener('click', () => {
   } else if (readerMode === 'comic' && comicPageNumber > 0) {
     comicPageNumber -= 1;
     void renderComicPage();
+  } else if (readerMode === 'epub') {
+    void navigateEpubChapter(-1);
   }
 });
 
@@ -378,6 +423,8 @@ nextPageButton.addEventListener('click', () => {
   } else if (readerMode === 'comic' && comicPageNumber < comicEntries.length - 1) {
     comicPageNumber += 1;
     void renderComicPage();
+  } else if (readerMode === 'epub') {
+    void navigateEpubChapter(1);
   }
 });
 
