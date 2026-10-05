@@ -220,13 +220,13 @@ const openPdf = async (file) => {
 };
 
 const sanitizeBookDocument = (bookDocument) => {
-  bookDocument.querySelectorAll('script, iframe, object, embed, form, base, meta[http-equiv]').forEach((node) => node.remove());
+  bookDocument.querySelectorAll('script, iframe, object, embed, form, base, meta, link, style, svg, math, audio, video, source').forEach((node) => node.remove());
   bookDocument.querySelectorAll('*').forEach((node) => {
     [...node.attributes].forEach((attribute) => {
       const name = attribute.name.toLowerCase();
       const value = attribute.value.trim();
-      if (name.startsWith('on') || name === 'srcdoc') node.removeAttribute(attribute.name);
-      if ((name === 'src' || name === 'href') && /^(?:https?:|javascript:|data:text\/html)/i.test(value)) {
+      if (name.startsWith('on') || ['srcdoc', 'style', 'srcset', 'poster', 'background', 'action', 'formaction', 'ping', 'xlink:href'].includes(name)) node.removeAttribute(attribute.name);
+      if ((name === 'src' && node.localName !== 'img') || (name === 'href' && !/^#[\w-]*$/.test(value))) {
         node.removeAttribute(attribute.name);
       }
     });
@@ -234,26 +234,75 @@ const sanitizeBookDocument = (bookDocument) => {
   return bookDocument;
 };
 
+// Resolve archive references without ever falling back to app files or network URLs.
+const epubArchivePath = (base, reference, decode = true) => {
+  let value;
+  try { value = decode ? decodeURIComponent(reference.split('#')[0]) : reference; } catch { return null; }
+  if (!value || /[\\:?\u0000-\u001f\u007f]/.test(value) || value.startsWith('/')) return null;
+  const segments = base.split('/').slice(0, -1);
+  for (const segment of value.split('/')) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') {
+      if (!segments.length) return null;
+      segments.pop();
+    } else segments.push(segment);
+  }
+  return segments.join('/') || null;
+};
+
+const readEpubEntry = (entry, limit, type = 'string') => new Promise((resolve, reject) => {
+  if (!entry || entry.dir) return reject(new Error('EPUB chapter content is missing.'));
+  // Enforce the limit during inflation, including archives with incorrect size headers.
+  const stream = entry.internalStream('uint8array');
+  const chunks = [];
+  let size = 0;
+  let failed = false;
+  stream.on('data', (chunk) => {
+    size += chunk.length;
+    if (size > limit) {
+      failed = true;
+      stream.pause();
+      chunks.length = 0;
+      reject(new Error('EPUB content exceeds the safe size limit.'));
+    } else if (!failed) chunks.push(chunk);
+  }).on('error', reject).on('end', () => {
+    if (failed) return;
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    chunks.forEach((chunk) => { bytes.set(chunk, offset); offset += chunk.length; });
+    resolve(type === 'string' ? new TextDecoder().decode(bytes) : bytes);
+  }).resume();
+});
+
+const EPUB_IMAGE_TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif' };
+
 const openEpub = async (file) => {
   const generation = localLibraryGeneration;
+  if (file.size > 64 * 1024 * 1024) throw new Error('EPUB archive exceeds the safe size limit.');
   const archive = await JSZip.loadAsync(await file.arrayBuffer());
+  if (generation !== localLibraryGeneration) return;
+  const entries = Object.values(archive.files);
+  if (entries.length > 5000 || entries.some((entry) => entry.unsafeOriginalName && epubArchivePath('', entry.unsafeOriginalName, false) !== entry.name)
+      || entries.reduce((total, entry) => total + (entry._data?.uncompressedSize || 0), 0) > 128 * 1024 * 1024) {
+    throw new Error('EPUB archive exceeds safe resource limits or contains unsafe paths.');
+  }
   const containerEntry = archive.file(/META-INF\/container\.xml$/i)[0];
   if (!containerEntry) throw new Error('EPUB container metadata is missing.');
   const parser = new DOMParser();
-  const container = parser.parseFromString(await containerEntry.async('string'), 'application/xml');
-  const packagePath = container.querySelector('rootfile')?.getAttribute('full-path');
+  const container = parser.parseFromString(await readEpubEntry(containerEntry, 1024 * 1024), 'application/xml');
+  const packagePath = epubArchivePath('', container.querySelector('rootfile')?.getAttribute('full-path') || '');
   if (!packagePath) throw new Error('EPUB package metadata is missing.');
   const packageEntry = archive.file(packagePath);
   if (!packageEntry) throw new Error('EPUB package file is missing.');
-  const packageDocument = parser.parseFromString(await packageEntry.async('string'), 'application/xml');
+  const packageDocument = parser.parseFromString(await readEpubEntry(packageEntry, 1024 * 1024), 'application/xml');
   const manifest = new Map(
     [...packageDocument.querySelectorAll('manifest item')].map((item) => [item.getAttribute('id'), item.getAttribute('href')])
   );
-  const packageDirectory = packagePath.includes('/') ? packagePath.slice(0, packagePath.lastIndexOf('/') + 1) : '';
   const chapters = [...packageDocument.querySelectorAll('spine itemref')]
     .map((item) => manifest.get(item.getAttribute('idref')))
     .filter(Boolean)
-    .map((chapter) => packageDirectory + chapter);
+    .map((chapter) => epubArchivePath(packagePath, chapter));
+  if (chapters.some((chapter) => !chapter)) throw new Error('EPUB chapter path is unsafe.');
   if (!chapters.length) throw new Error('EPUB chapter content is missing.');
   if (generation !== localLibraryGeneration) return;
   const state = { archive, chapters, chapterNumber: 0, loading: false };
@@ -271,19 +320,46 @@ const renderEpubChapter = async (chapterNumber) => {
   state.loading = true;
   previousPageButton.disabled = true;
   nextPageButton.disabled = true;
+  const newUrls = new Set();
   try {
     const chapter = state.archive.file(state.chapters[chapterNumber]);
     if (!chapter) throw new Error('EPUB chapter content is missing.');
-    const source = await chapter.async('string');
+    const source = await readEpubEntry(chapter, 4 * 1024 * 1024);
     if (epubState !== state || readerMode !== 'epub') return;
     const chapterDocument = sanitizeBookDocument(new DOMParser().parseFromString(source, 'text/html'));
-    epubDocument.replaceChildren(
-      ...[...chapterDocument.body.childNodes].map((node) => document.importNode(node, true))
-    );
+    const resources = new Map();
+    let resourceBytes = 0;
+    for (const image of chapterDocument.querySelectorAll('img')) {
+      const path = epubArchivePath(state.chapters[chapterNumber], image.getAttribute('src') || '');
+      image.removeAttribute('src');
+      const mime = path && EPUB_IMAGE_TYPES[path.split('.').pop().toLowerCase()];
+      const entry = path && state.archive.file(path);
+      if (!mime || !entry) continue;
+      if (!resources.has(path)) {
+        if (resources.size >= 128) throw new Error('EPUB chapter contains too many image resources.');
+        const bytes = await readEpubEntry(entry, 16 * 1024 * 1024, 'bytes');
+        if (epubState !== state || readerMode !== 'epub') return;
+        resourceBytes += bytes.length;
+        if (resourceBytes > 64 * 1024 * 1024) throw new Error('EPUB chapter images exceed the safe size limit.');
+        const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+        newUrls.add(url);
+        resources.set(path, url);
+      }
+      image.setAttribute('src', resources.get(path));
+    }
+    if (epubState !== state || readerMode !== 'epub') return;
+    const fragment = document.createDocumentFragment();
+    for (const node of chapterDocument.body.childNodes) fragment.appendChild(document.importNode(node, true));
+    // Keep the previous chapter and its URLs intact until insertion succeeds.
+    epubDocument.replaceChildren(fragment);
+    releaseObjectUrls();
+    newUrls.forEach((url) => activeObjectUrls.add(url));
+    newUrls.clear();
     state.chapterNumber = chapterNumber;
     epubViewerShell.scrollTop = 0;
     pageStatus.textContent = `Chapter ${chapterNumber + 1} of ${state.chapters.length}`;
   } finally {
+    newUrls.forEach((url) => URL.revokeObjectURL(url));
     state.loading = false;
     if (epubState === state && readerMode === 'epub') {
       previousPageButton.disabled = state.chapterNumber <= 0;
@@ -408,6 +484,8 @@ const openLocalFile = async (file) => {
     comicArchive = null;
     comicEntries = [];
     comicPage.removeAttribute('src');
+    epubState = null;
+    epubDocument.replaceChildren();
     readerMode = 'error';
     playerPlaceholder.hidden = false;
     placeholderTitle.textContent = 'Could not open this file';

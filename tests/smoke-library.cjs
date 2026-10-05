@@ -202,6 +202,129 @@ const run = async () => {
   assert.deepEqual(epubNavigation.stale, { mode: 'empty', text: '', toolbarHidden: true });
   assert.deepEqual(epubNavigation.staleOpen, { mode: 'empty', text: '', toolbarHidden: true });
 
+  const epubResources = await evaluate(`(async () => {
+    const zip = new JSZip();
+    const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+    zip.file('mimetype', 'application/epub+zip');
+    zip.file('META-INF/container.xml', '<container><rootfiles><rootfile full-path="OEBPS/book.opf"/></rootfiles></container>');
+    zip.file('OEBPS/book.opf', '<package><manifest><item id="a" href="text/first.xhtml"/><item id="b" href="text/second.xhtml"/></manifest><spine><itemref idref="a"/><itemref idref="b"/></spine></package>');
+    const chapter = '<html><body><h1>Illustrated</h1><img id="picture" src="../images/picture%20one.png"/><img id="duplicate" src="../images/./picture%20one.png"/><img src="//example.com/tracker.png"/><img src="file:///tmp/picture.png"/><img src="data:image/svg+xml,test"/><img src="../../../escape.png"/><img src="../images/missing.png"/><img src="../images/bad.png"/><p style="background:url(https://example.com)">text</p><svg><image href="https://example.com"/></svg><script>window.epubUnsafe = true</script><a href="javascript:alert(1)" onclick="alert(1)">unsafe</a></body></html>';
+    zip.file('OEBPS/text/first.xhtml', chapter);
+    zip.file('OEBPS/text/second.xhtml', chapter);
+    zip.file('OEBPS/images/picture one.png', pixel, { base64: true });
+    zip.file('OEBPS/images/bad.png', 'not an image');
+    const book = new File([await zip.generateAsync({ type: 'blob' })], 'illustrated.epub');
+    const originalRevoke = URL.revokeObjectURL;
+    const originalCreate = URL.createObjectURL;
+    const mimes = new Map();
+    const liveUrls = new Set(activeObjectUrls);
+    URL.createObjectURL = (blob) => { const url = originalCreate.call(URL, blob); mimes.set(url, blob.type); liveUrls.add(url); return url; };
+    const revoked = [];
+    URL.revokeObjectURL = (url) => { revoked.push(url); liveUrls.delete(url); originalRevoke.call(URL, url); };
+    const inspect = async () => {
+      const image = epubDocument.querySelector('#picture');
+      await image.decode();
+      const url = image.src;
+      const bad = epubDocument.querySelector('img[src]:last-of-type');
+      let invalidImageRejected = false;
+      try { await bad.decode(); } catch { invalidImageRejected = true; }
+      return { width: image.naturalWidth, mime: mimes.get(url), url,
+        duplicate: epubDocument.querySelector('#duplicate').src === url,
+        unsafe: epubDocument.querySelectorAll('script, svg, [onclick], [style], [href], img[src]:not([src^="blob:"])').length,
+        invalidImageRejected, urls: activeObjectUrls.size, live: liveUrls.size };
+    };
+    try {
+      await openLocalFile(book);
+      const first = await inspect();
+      await navigateEpubChapter(1);
+      const second = await inspect();
+      const firstReleased = revoked.includes(first.url);
+      await navigateEpubChapter(-1);
+      const previous = await inspect();
+      const secondReleased = revoked.includes(second.url);
+      resetLocalLibrary();
+      const reset = { released: revoked.includes(previous.url), urls: activeObjectUrls.size, live: liveUrls.size, text: epubDocument.textContent };
+      const stale = [];
+      for (const action of ['clear', 'replace']) {
+        await openLocalFile(book);
+        const entry = epubState.archive.file('OEBPS/images/bad.png');
+        const original = entry.internalStream;
+        let resume;
+        entry.internalStream = function (...args) {
+          const stream = original.apply(this, args);
+          const originalResume = stream.resume;
+          stream.resume = function () { resume = () => originalResume.call(stream); return stream; };
+          return stream;
+        };
+        const pending = navigateEpubChapter(1);
+        while (!resume) await new Promise(resolve => setTimeout(resolve, 5));
+        if (action === 'clear') resetLocalLibrary();
+        else await openLocalFile(new File(['audio'], 'new.mp3', { type: 'audio/mpeg' }));
+        const before = { mode: readerMode, urls: activeObjectUrls.size, text: epubDocument.textContent };
+        resume();
+        await pending;
+        if (liveUrls.size !== activeObjectUrls.size) throw new Error('Stale EPUB resource URLs leaked.');
+        stale.push({ before, after: { mode: readerMode, urls: activeObjectUrls.size, text: epubDocument.textContent } });
+      }
+      // Inflation is bounded even when metadata falsely advertises a small size.
+      const oversized = new JSZip();
+      oversized.file('large.txt', 'x'.repeat(2048));
+      const loaded = await JSZip.loadAsync(await oversized.generateAsync({ type: 'uint8array', compression: 'DEFLATE' }));
+      loaded.file('large.txt')._data.uncompressedSize = 1;
+      let bounded = false;
+      try { await readEpubEntry(loaded.file('large.txt'), 100); } catch (error) { bounded = /size limit/.test(error.message); }
+      await openLocalFile(book);
+      epubState.archive.file('OEBPS/images/bad.png').internalStream = () => { throw new Error('Resource read failed'); };
+      const preserved = epubDocument.querySelector('#picture').src;
+      await navigateEpubChapter(1);
+      const failure = { preserved: epubDocument.querySelector('#picture').src === preserved, urls: activeObjectUrls.size, live: liveUrls.size, error: mediaDetails.textContent };
+      await openLocalFile(book);
+      const originalReplaceChildren = epubDocument.replaceChildren;
+      const previousImage = epubDocument.querySelector('#picture');
+      const previousUrls = [...liveUrls];
+      epubDocument.replaceChildren = () => { throw new Error('DOM insertion failed'); };
+      try { await navigateEpubChapter(1); } finally { epubDocument.replaceChildren = originalReplaceChildren; }
+      await previousImage.decode();
+      const insertionFailure = { sameImage: epubDocument.querySelector('#picture') === previousImage,
+        width: previousImage.naturalWidth, urlsUnchanged: JSON.stringify([...liveUrls]) === JSON.stringify(previousUrls),
+        activeUnchanged: JSON.stringify([...activeObjectUrls]) === JSON.stringify(previousUrls),
+        status: pageStatus.textContent, error: mediaDetails.textContent };
+      // This valid chapter is below the byte cap but exceeds JS call-argument limits.
+      epubState.archive.file('OEBPS/text/second.xhtml', '<html><body><h1>Many nodes</h1>' + '<br>'.repeat(300000) + '</body></html>');
+      await navigateEpubChapter(1);
+      const manyNodes = { nodes: epubDocument.querySelectorAll('br').length, heading: epubDocument.querySelector('h1')?.textContent,
+        status: pageStatus.textContent, urls: activeObjectUrls.size, live: liveUrls.size };
+      resetLocalLibrary();
+      const originalLoad = JSZip.loadAsync;
+      JSZip.loadAsync = async (...args) => {
+        const archive = await originalLoad(...args);
+        archive.file('OEBPS/images/bad.png').internalStream = () => { throw new Error('Initial resource failed'); };
+        return archive;
+      };
+      try { await openLocalFile(book); } finally { JSZip.loadAsync = originalLoad; }
+      const initialFailure = { mode: readerMode, text: epubDocument.textContent, urls: activeObjectUrls.size, live: liveUrls.size, stateCleared: epubState === null };
+      return { first, second, previous, firstReleased, secondReleased, reset, stale, bounded, failure, insertionFailure, manyNodes, initialFailure };
+    } finally { URL.revokeObjectURL = originalRevoke; URL.createObjectURL = originalCreate; resetLocalLibrary(); }
+  })()`);
+  for (const chapter of [epubResources.first, epubResources.second, epubResources.previous]) {
+    assert.equal(chapter.width, 1);
+    assert.equal(chapter.mime, 'image/png');
+    assert.equal(chapter.duplicate, true);
+    assert.equal(chapter.unsafe, 0);
+    assert.equal(chapter.urls, 2);
+    assert.equal(chapter.live, 2);
+    assert.equal(chapter.invalidImageRejected, true);
+  }
+  assert.equal(epubResources.firstReleased, true);
+  assert.equal(epubResources.secondReleased, true);
+  assert.deepEqual(epubResources.reset, { released: true, urls: 0, live: 0, text: '' });
+  for (const result of epubResources.stale) assert.deepEqual(result.after, result.before);
+  assert.equal(epubResources.bounded, true);
+  assert.deepEqual(epubResources.failure, { preserved: true, urls: 2, live: 2, error: 'Resource read failed' });
+  assert.deepEqual(epubResources.insertionFailure, { sameImage: true, width: 1, urlsUnchanged: true, activeUnchanged: true, status: 'Chapter 1 of 2', error: 'DOM insertion failed' });
+  assert.deepEqual(epubResources.manyNodes, { nodes: 300000, heading: 'Many nodes', status: 'Chapter 2 of 2', urls: 0, live: 0 });
+  assert.deepEqual(epubResources.initialFailure, { mode: 'error', text: '', urls: 0, live: 0, stateCleared: true });
+
   const comic = await evaluate(`(async () => {
     const zip = new JSZip();
     const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
@@ -328,7 +451,7 @@ const run = async () => {
     fs.writeFileSync(path.join(artifactDirectory, 'library-smoke.png'), Buffer.from(screenshot.data, 'base64'));
   }
   socket.close();
-  process.stdout.write(`${JSON.stringify({ shell, onboarding, epub, epubNavigation, comic, comicCancellation, pdf, gameBoundary, savedGameBoundary }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ shell, onboarding, epub, epubNavigation, epubResources, comic, comicCancellation, pdf, gameBoundary, savedGameBoundary }, null, 2)}\n`);
 };
 
 run().catch((error) => {

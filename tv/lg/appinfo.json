@@ -1,6 +1,6 @@
 {
   "id": "com.harbor.tv",
-  "version": "2.3.7",
+  "version": "2.3.8",
   "vendor": "Harbor",
   "type": "web",
   "main": "index.html",
