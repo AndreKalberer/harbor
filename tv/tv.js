@@ -314,6 +314,8 @@
     };
   }
 
+  var loadedProviderShows = {};
+
   function fetchWatch(query, page) {
     if (state.subcategory === 'Sports' || state.subcategory === 'Live TV') {
       var liveFilter = watchBrowseApi.getFilter(state.subcategory, state.watchFilter);
@@ -332,12 +334,31 @@
         return directory.channels.map(function (entry, index) { return normalizeLiveChannel(entry, index, liveFilter); });
       });
     }
+    var seriesFilter = watchBrowseApi.getFilter(state.subcategory, state.watchFilter);
+    if (state.subcategory === 'TV Shows' && seriesFilter && seriesFilter.source === 'provider-shows' && !query) {
+      return watchBrowseApi.loadProviderShows(page, requestJson).then(function (result) {
+        var items = result.items.map(function (item) {
+          return Object.assign({}, item, { section: 'TV Shows', tags: item.sections, meta: item.year + ' · Series', summary: item.overview, image: item.artworkUrl });
+        });
+        items.forEach(function (item) { loadedProviderShows[item.id] = item; });
+        items.catalogCanLoadMore = result.canLoadMore;
+        return items;
+      });
+    }
     if (!TMDB_KEY) {
       var normalizedQuery = String(query || '').trim().toLowerCase();
-      return Promise.resolve(fallbackWatch.concat(liveItems).filter(function (item) {
+      var localItems = fallbackWatch.concat(liveItems);
+      if (state.subcategory === 'TV Shows') localItems = Object.keys(loadedProviderShows).map(function (id) { return loadedProviderShows[id]; }).concat(localItems);
+      var seenLocal = {};
+      var matches = localItems.filter(function (item) {
         var matchesQuery = !normalizedQuery || item.name.toLowerCase().includes(normalizedQuery);
-        return matchesQuery && matchesWatchSubcategory(item) && matchesWatchFilter(item);
-      }));
+        if (!matchesQuery || !matchesWatchSubcategory(item) || !matchesWatchFilter(item)) return false;
+        var key = item.type + '-' + (item.tmdbId || item.id);
+        if (seenLocal[key]) return false;
+        seenLocal[key] = true; return true;
+      });
+      if (state.subcategory === 'TV Shows') matches.catalogCanLoadMore = false;
+      return Promise.resolve(matches);
     }
     var base = 'https://api.themoviedb.org/3/';
     var suffix = '?api_key=' + TMDB_KEY + '&include_adult=false&page=' + page;
@@ -571,7 +592,8 @@
       ? '<div class="empty-state"><h3>Your Harbor is ready</h3><p>Save a title or start watching to build your personal home.</p></div>'
       : '<div class="empty-state"><h3>No titles found</h3><p>Try a different search or category.</p></div>';
     var isLive = state.subcategory === 'Sports' || state.subcategory === 'Live TV';
-    resultCount.textContent = isLive
+    resultCount.textContent = !TMDB_KEY && state.subcategory === 'TV Shows' && state.query
+      ? state.items.length + ' matches in loaded TV shows' : isLive
       ? state.liveWindow === 'soon'
         ? state.items.length + ' upcoming listings'
         : state.items.length + ' of ' + Math.max(state.liveTotal, state.items.length) + ' channels live now'
@@ -592,10 +614,11 @@
       if (generation !== itemLoadGeneration) return;
       var next = items.filter(function (item) { return item && item.name; });
       state.items = append ? state.items.concat(next.filter(function (item) { return !state.items.some(function (existing) { return existing.id === item.id; }); })) : next;
-      state.canLoadMore = next.length >= 20 && !['Play', 'Sports', 'Live TV', 'My List', 'Continue'].includes(state.subcategory);
+      state.canLoadMore = typeof items.catalogCanLoadMore === 'boolean' ? items.catalogCanLoadMore : next.length >= 20 && !['Play', 'Sports', 'Live TV', 'My List', 'Continue'].includes(state.subcategory);
       state.loading = false; moreButton.disabled = false; renderHero(); renderCards();
     }).catch(function () {
       if (generation !== itemLoadGeneration) return;
+      if (append) { state.page = Math.max(1, state.page - 1); state.loading = false; moreButton.disabled = false; renderCards(); notify('Could not load more. Try Show more again.'); return; }
       if (state.query) state.items = [];
       else if (state.section === 'Home' && state.subcategory === 'My List') state.items = state.saved;
       else if (state.section === 'Home' && state.subcategory === 'Continue') state.items = state.history;
@@ -1038,6 +1061,7 @@
     return watchBrowseApi.matchesLocalFilter({
       name: item.name,
       summary: item.summary,
+      rating: item.rating,
       meta: item.meta,
       section: item.section,
       sections: [item.section].concat(item.tags || [])

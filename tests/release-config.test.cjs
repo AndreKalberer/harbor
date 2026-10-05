@@ -12,6 +12,7 @@ const androidGradle = read('tv/android/app/build.gradle.kts');
 const androidActivity = read('tv/android/app/src/main/java/com/harbor/tv/MainActivity.java');
 const stageTv = read('scripts/stage-tv.cjs');
 const sourcePackage = read('scripts/package-current-release.cjs');
+const samsungManifest = read('tv/samsung/config.xml');
 const renderer = read('app/renderer.js');
 const main = read('electron/main.cjs');
 const landing = read('index.html');
@@ -31,6 +32,7 @@ assert(/\n  build:\r?\n    needs: verify/.test(workflow) && /\n  tv:\r?\n    nee
 assert((workflow.match(/GITHUB_EVENT_NAME[^\n]*pull_request/g) || []).length >= 2, 'Pull-request catalog fallback is missing from a build job.');
 assert(!workflow.includes('com.harbor.tv_2.0.0_all.ipk'), 'TV artifact naming is hardcoded to one version.');
 assert(androidActivity.includes('https://appassets.androidplatform.net/assets/index.html') && androidActivity.includes('WebViewAssetLoader'), 'Android TV does not load its bundled interface from a secure app-assets origin.');
+assert(samsungManifest.includes('<access origin="https://vidapi.ru" subdomains="false" />'), 'Samsung must allow the exact provider Shows catalog origin.');
 assert(stageTv.includes("buildRoot, 'android-assets'") && stageTv.includes("buildRoot, 'samsung'"), 'Self-contained TV assets are not staged.');
 assert(stageTv.includes('lgManifest.version = version') && stageTv.includes('stagedSamsungManifest'), 'TV manifest versions are not derived during staging.');
 assert(stageTv.includes("replaceAll('src=\"../assets/harbor-mark.svg\"'"), 'LG staging does not inline every Harbor logo.');
