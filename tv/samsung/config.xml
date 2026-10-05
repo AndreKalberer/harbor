@@ -12,6 +12,7 @@
   <access origin="https://live-stream.cgtn.com" subdomains="false" />
   <access origin="https://envod.cgtn.com" subdomains="false" />
   <access origin="https://worker-9dd4.onrender.com" subdomains="false" />
+  <access origin="https://vidapi.ru" subdomains="false" />
   <access origin="https://api.themoviedb.org" subdomains="false" />
   <access origin="https://image.tmdb.org" subdomains="false" />
   <access origin="https://itunes.apple.com" subdomains="false" />

@@ -476,6 +476,9 @@ let movieCatalogInfo = null;
 let movieCatalogError = '';
 let movieCatalogRetryPage = 1;
 const loadedProviderMovies = new Map();
+const loadedProviderShows = new Map();
+let seriesCatalogError = '';
+let seriesCatalogRetryPage = 1;
 let activeLiveCountry = '';
 let activeLiveLanguage = '';
 let activeLiveWindow = 'now';
@@ -786,6 +789,10 @@ const isCurrentSearchRequest = (term, sequence, scope) => (
 );
 
 const localSearchResults = (term, scope = getSearchScope()) => {
+  if (scope.category === 'Watch' && scope.subcategory === 'TV Shows' && !TMDB_API_KEY) {
+    return rankSearchResults([...loadedProviderShows.values(), ...WATCH_CATALOG]
+      .filter(item => itemMatchesSearchScope(item, scope)), term);
+  }
   if (scope.category === 'Watch' && scope.subcategory === 'Movies' && !TMDB_API_KEY) {
     return rankSearchResults([...loadedProviderMovies.values(), ...WATCH_CATALOG]
       .filter(item => itemMatchesSearchScope(item, scope)), term);
@@ -947,6 +954,10 @@ const loadActiveWatchBrowse = async ({ append = false, requestedPage = 1 } = {})
   watchBrowseKey = key;
   watchBrowseLoading = true;
   watchBrowseLoaded = false;
+  if (activeSubcategory === 'TV Shows') {
+    seriesCatalogError = '';
+    seriesCatalogRetryPage = page;
+  }
   if (activeSubcategory === 'Movies') {
     movieCatalogError = '';
     movieCatalogRetryPage = page;
@@ -970,6 +981,13 @@ const loadActiveWatchBrowse = async ({ append = false, requestedPage = 1 } = {})
       liveDirectoryFacets = directory.facets || { countries: [], languages: [], sports: [] };
       liveDirectoryTotal = Number(directory.total) || items.length;
       liveDirectoryCached = Boolean(directory.cached);
+    } else if (filter.source === 'provider-shows') {
+      const response = await window.harbor?.getVidSrcShows?.(page);
+      if (response?.status !== 'ok') throw new Error(response?.message || 'TV library is unavailable.');
+      const result = watchBrowseApi.providerShowsPage(response.data, page);
+      items = result.items.map(item => ({ ...item, sources: [{ name: 'EMBED PROVIDER', badge: 'badge-embed' }] }));
+      items.forEach(item => loadedProviderShows.set(mediaKey(item), item));
+      canLoadMore = result.canLoadMore;
     } else if (filter.source === 'provider-catalog' || (activeSubcategory === 'Movies' && !TMDB_API_KEY)) {
       const result = await loadVidSrcMovieCatalog(page);
       items = result.items.filter((item) => itemMatchesWatchFilter(item));
@@ -991,7 +1009,7 @@ const loadActiveWatchBrowse = async ({ append = false, requestedPage = 1 } = {})
       ? [...watchBrowseItems, ...items.filter((item) => !watchBrowseItems.some((existing) => mediaKey(existing) === mediaKey(item)))]
       : items;
     watchBrowsePage = page;
-    watchBrowseCanLoadMore = (filter.source === 'tmdb' || activeSubcategory === 'Movies') && canLoadMore;
+    watchBrowseCanLoadMore = (filter.source === 'tmdb' || filter.source === 'provider-shows' || activeSubcategory === 'Movies') && canLoadMore;
     watchBrowseLoading = false;
     watchBrowseLoaded = true;
     if ((filter.source === 'iptv' || filter.source === 'free-events') && query.trim()) {
@@ -1003,6 +1021,9 @@ const loadActiveWatchBrowse = async ({ append = false, requestedPage = 1 } = {})
     if (generation !== watchBrowseGeneration || key !== currentWatchBrowseKey()) return;
     if (activeSubcategory === 'Movies') {
       movieCatalogError = 'Movie library could not be loaded. ' + (error?.message || 'Try again.');
+      if (!append) watchBrowseItems = localWatchBrowseItems();
+    } else if (filter.source === 'provider-shows') {
+      seriesCatalogError = 'TV library could not be loaded. ' + (error?.message || 'Try again.');
       if (!append) watchBrowseItems = localWatchBrowseItems();
     } else watchBrowseItems = localWatchBrowseItems();
     watchBrowseCanLoadMore = false;
@@ -1017,7 +1038,7 @@ const loadActiveWatchBrowse = async ({ append = false, requestedPage = 1 } = {})
       }
     }
     renderResources();
-    showStatusToast(activeSubcategory === 'Movies' ? 'Movie library unavailable' : 'Live catalog is temporarily unavailable', 'Showing Harbor’s built-in picks instead.');
+    showStatusToast(activeSubcategory === 'Movies' ? 'Movie library unavailable' : activeSubcategory === 'TV Shows' ? 'TV library unavailable' : 'Live catalog is temporarily unavailable', 'Showing Harbor’s built-in picks instead.');
   }
 };
 
@@ -1309,7 +1330,7 @@ const applySearchBatch = (term, sequence, scope, localResults, batches, totals, 
 const searchGlobalMedia = async (term, sequence, scope, page = 1, append = false) => {
   const normalizedTerm = normalizeSearchText(term);
   if (normalizedTerm.length < 2 || !isCurrentSearchRequest(term, sequence, scope)) return;
-  if (scope.category === 'Watch' && scope.subcategory === 'Movies' && !TMDB_API_KEY) {
+  if (scope.category === 'Watch' && ['Movies', 'TV Shows'].includes(scope.subcategory) && !TMDB_API_KEY) {
     currentMediaList = localSearchResults(term, scope);
     searchState = { term: normalizedTerm, loading: false, total: currentMediaList.length, page: 1, canLoadMore: false, partial: false };
     renderResources();
@@ -1487,6 +1508,15 @@ const beginSearch = (term) => {
   if (!normalizedTerm) {
     searchState = { term: '', loading: false, total: null, page: 1, canLoadMore: false, partial: false };
     currentMediaList = [...discoveryMediaList];
+    renderResources();
+    return;
+  }
+
+  // Provider-only catalog search changes as more pages are loaded. Recompute
+  // local results each time rather than reuse a remote-search cache entry.
+  if (scope.category === 'Watch' && ['Movies', 'TV Shows'].includes(scope.subcategory) && !TMDB_API_KEY) {
+    currentMediaList = localSearchResults(term, scope);
+    searchState = { term: normalizedTerm, loading: false, total: currentMediaList.length, page: 1, canLoadMore: false, partial: false };
     renderResources();
     return;
   }
@@ -2733,6 +2763,12 @@ const renderResources = () => {
       retry.addEventListener('click', () => void loadActiveWatchBrowse({requestedPage:movieCatalogRetryPage}));
       resultsSection.append(retry);
     }
+    if (activeCategory === 'Watch' && activeSubcategory === 'TV Shows' && seriesCatalogError) {
+      headingCopy.append(createElement('p', '', seriesCatalogError));
+      const retry = Object.assign(createElement('button', 'button-secondary', 'Retry TV library'), { type: 'button' });
+      retry.addEventListener('click', () => void loadActiveWatchBrowse({ append: watchBrowseItems.length > 0 && seriesCatalogRetryPage > 1, requestedPage: seriesCatalogRetryPage }));
+      resultsSection.append(retry);
+    }
     if (watchBrowseCanLoadMore && !watchBrowseLoading) {
       const moreWrap = createElement('div', 'load-more-wrap');
       const moreButton = Object.assign(createElement('button', 'button-secondary load-more-button', 'Show more'), { type: 'button' });
@@ -2745,7 +2781,8 @@ const renderResources = () => {
 
   resourceList.replaceChildren(...rails);
 
-  searchInput.placeholder = activeCategory === 'Watch' && activeSubcategory === 'Movies' && !TMDB_API_KEY ? 'Search loaded movies' : 'Search ' + searchScopeName;
+  searchInput.placeholder = activeCategory === 'Watch' && !TMDB_API_KEY && ['Movies', 'TV Shows'].includes(activeSubcategory)
+    ? 'Search loaded ' + (activeSubcategory === 'Movies' ? 'movies' : 'TV shows') : 'Search ' + searchScopeName;
   searchInput.setAttribute('aria-label', 'Search ' + searchScopeName);
   heroKicker.textContent = query.trim() ? 'Search ' + searchScopeName : config.kicker;
   directoryTitle.textContent = query.trim()

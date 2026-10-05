@@ -37,6 +37,7 @@
       { id: 'documentary', label: 'Documentary', source: 'tmdb', endpoint: 'discover/movie', mediaType: 'movie', params: { with_genres: '99', sort_by: 'popularity.desc' }, local: { terms: ['documentary'] } }
     ],
     'TV Shows': [
+      { id: 'latest-library', label: 'Latest Library', source: 'provider-shows', mediaType: 'tv' },
       { id: 'popular', label: 'Popular', source: 'tmdb', endpoint: 'tv/popular', mediaType: 'tv' },
       { id: 'airing-today', label: 'Airing Today', source: 'tmdb', endpoint: 'tv/airing_today', mediaType: 'tv' },
       { id: 'on-tv', label: 'On TV', source: 'tmdb', endpoint: 'tv/on_the_air', mediaType: 'tv' },
@@ -130,6 +131,47 @@
       if (params[key] === '$today') params[key] = date;
     });
     return { endpoint: filter.endpoint, mediaType: filter.mediaType, params: params };
+  }
+
+  // The public provider feed has no language/country data. Animation alone
+  // must not be labelled Anime; keep these entries as television series.
+  function normalizeProviderShow(item) {
+    if (!item || typeof item !== 'object') return null;
+    var id = String(item.tmdb_id || item.tmdbId || item.id || '');
+    if (!/^[1-9][0-9]*$/.test(id)) return null;
+    var title = String(item.title || item.name || '').trim();
+    if (!title) return null;
+    var genres = Array.isArray(item.genres) ? item.genres : String(item.genre || '').split(',');
+    genres = genres.map(function (genre) { return typeof genre === 'string' ? genre.trim() : genre && genre.name || ''; }).filter(Boolean);
+    var rating = Number(item.rating == null ? item.vote_average : item.rating);
+    var poster = String(item.poster_url || item.poster_path || '');
+    if (poster.charAt(0) === '/') poster = 'https://image.tmdb.org/t/p/w500' + poster;
+    if (!/^https?:\/\//i.test(poster)) poster = '';
+    return {
+      id: 'vidsrc-tv-' + id, tmdbId: id, name: title, category: 'Watch', type: 'tv',
+      year: String(item.year || String(item.first_air_date || '').slice(0, 4)),
+      rating: Number.isFinite(rating) ? rating.toFixed(1) : '',
+      sections: ['TV Show', 'Series'].concat(genres), artworkUrl: poster,
+      overview: item.overview || 'Listed in the provider TV library. Choose a playback server to try this title.'
+    };
+  }
+
+  function providerShowsPage(data, page) {
+    if (!data || !Array.isArray(data.items) || !Number.isSafeInteger(data.total_pages)
+      || data.total_pages < 1 || !Number.isSafeInteger(data.total) || data.total < 0
+      || (data.page != null && data.page !== page)) throw new Error('TV library returned an unexpected response.');
+    var seen = {};
+    var items = data.items.map(normalizeProviderShow).filter(function (item) {
+      if (!item || seen[item.id]) return false;
+      seen[item.id] = true; return true;
+    });
+    return { items: items, page: page, total: data.total, totalPages: data.total_pages, canLoadMore: page < data.total_pages };
+  }
+
+  function loadProviderShows(page, request) {
+    if (!Number.isSafeInteger(page) || page < 1) return Promise.reject(new Error('TV library page must be a positive integer.'));
+    return Promise.resolve().then(function () { return request('https://vidapi.ru/tvshows/latest/page-' + page + '.json'); })
+      .then(function (data) { return providerShowsPage(data, page); });
   }
 
   function matchesLocalFilter(item, section, filterId) {
@@ -545,6 +587,9 @@
   }
 
   return {
+    normalizeProviderShow: normalizeProviderShow,
+    providerShowsPage: providerShowsPage,
+    loadProviderShows: loadProviderShows,
     taxonomy: taxonomy,
     getFilters: getFilters,
     getFilter: getFilter,
