@@ -118,9 +118,7 @@ const runSmoke = async (smokeName) => {
   }
   const executable = packagedExecutable || electronPath;
   const harborArgs = [
-    '--disable-gpu',
-    '--in-process-gpu',
-    '--disable-gpu-sandbox',
+    ...(process.env.HARBOR_QA_GPU === 'native' ? [] : ['--disable-gpu', '--in-process-gpu', '--disable-gpu-sandbox']),
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${profileDirectory}`
   ];
@@ -136,7 +134,7 @@ const runSmoke = async (smokeName) => {
     cwd: projectRoot,
     env: {
       ...process.env,
-      HARBOR_QA_SHOW: '0'
+      HARBOR_QA_SHOW: process.env.HARBOR_QA_SHOW === '1' ? '1' : '0'
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true

@@ -9,7 +9,9 @@ const artworkCacheApi = require('../shared/artwork-cache.js');
 const releaseChannelApi = require('../shared/release-channel.js');
 const { autoUpdater } = require('electron-updater');
 
-if (process.platform === 'win32') app.disableHardwareAcceleration();
+// Keep Chromium's hardware video decoding on by default. Software rendering
+// remains available for machines with incompatible graphics drivers.
+if (app.commandLine.hasSwitch('disable-gpu')) app.disableHardwareAcceleration();
 
 protocol.registerSchemesAsPrivileged([{
   scheme: 'harbor-artwork',
