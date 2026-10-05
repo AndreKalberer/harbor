@@ -1,6 +1,6 @@
 {
   "name": "harbor-desktop",
-  "version": "2.3.4",
+  "version": "2.3.6",
   "description": "A consumer entertainment hub for watching, listening, reading, and playing.",
   "desktopName": "com.harbor.desktop",
   "main": "electron/main.cjs",
@@ -16,7 +16,7 @@
     "start": "electron .",
     "icon:render": "electron scripts/render-icon.cjs",
     "tv:icon": "electron scripts/render-tv-icon.cjs",
-    "test": "npm run test:static && node tests/vidsrc-catalog.test.cjs && node tests/player-readiness.test.cjs && node tests/prune-old-downloads.test.cjs",
+    "test": "npm run test:static && node tests/vidsrc-catalog.test.cjs && node tests/player-readiness.test.cjs && node tests/prune-old-downloads.test.cjs && node tests/gpu-policy.test.cjs",
     "test:consumer": "npm test && npm run test:desktop-smoke && npm run test:player",
     "test:player": "node tests/run-player-smoke.cjs",
     "test:all": "npm run test:consumer && npm run test:tv-smoke",
@@ -35,7 +35,8 @@
     "dist:win:installer": "electron-builder --win nsis --x64 --publish never",
     "dist:win:release": "electron-builder --win nsis portable --x64 --publish never",
     "dist:linux": "electron-builder --linux AppImage tar.gz --x64 --publish never",
-    "dist:mac": "electron-builder --mac dmg zip --x64 --arm64 --publish never"
+    "dist:mac": "electron-builder --mac dmg zip --x64 --arm64 --publish never",
+    "test:gpu": "node tests/run-gpu-playback-smoke.cjs"
   },
   "devDependencies": {
     "electron": "43.4.1",
