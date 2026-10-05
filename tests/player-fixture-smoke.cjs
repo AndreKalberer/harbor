@@ -18,6 +18,8 @@ async function run(){
       // Follow the same card → details → Watch flow as the user.
       await handleMediaClick(movie);detailPlayBtn.click();
       if(activeProviderKey!=='vidapi')throw new Error('Catalog titles must start with their own player');
+      if(streamServerSelect.querySelectorAll('optgroup').length!==2 || streamServerSelect.querySelector('optgroup option').value!=='vidapi')throw new Error('Catalog listing must be separated from unknown fallback servers');
+      if(streamServerSelect.querySelectorAll('option').length!==10)throw new Error('Unknown providers must remain available to try');
       const result=[];
       for(const provider of playbackProvidersApi.providers){
         streamServerSelect.value=provider.id;
