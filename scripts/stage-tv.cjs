@@ -58,7 +58,7 @@ const run = async () => {
   fs.writeFileSync(stagedLgManifest, JSON.stringify(lgManifest, null, 2) + '\n');
   const stagedSamsungManifest = path.join(buildRoot, 'samsung', 'config.xml');
   const samsungManifest = fs.readFileSync(stagedSamsungManifest, 'utf8')
-    .replace(/(<widget\b[^>]*\bversion=")[^"]+("[^>]*>)/, `$1${version}$2`);
+    .replace(/(<widget\b[^>]*\bversion=")[^"]+("[^>]*>)/, (_, before, after) => `${before}${version}${after}`);
   fs.writeFileSync(stagedSamsungManifest, samsungManifest);
 
   const icon = path.join(root, 'assets', 'tv-icon.png');
@@ -91,16 +91,16 @@ const run = async () => {
   const logoData = `data:image/svg+xml;base64,${fs.readFileSync(path.join(root, 'assets', 'harbor-mark.svg')).toString('base64')}`;
   const iconData = `data:image/png;base64,${fs.readFileSync(icon).toString('base64')}`;
   const lgHtml = fs.readFileSync(path.join(tvRoot, 'index.html'), 'utf8')
-    .replace("script-src 'self'; style-src 'self';", `script-src 'nonce-${lgNonce}'; style-src 'nonce-${lgNonce}';`)
-    .replace('<link rel="icon" href="../assets/icon.png" />', `<link rel="icon" href="${iconData}" />`)
-    .replace('<link rel="stylesheet" href="tv.css" />', `<style nonce="${lgNonce}">${fs.readFileSync(path.join(tvRoot, 'tv.css'), 'utf8')}</style>`)
-    .replaceAll('src="../assets/harbor-mark.svg"', `src="${logoData}"`)
-    .replace('<script src="../shared/series-metadata.js"></script>', `<script nonce="${lgNonce}">${inlineScript(seriesMetadataSource)}</script>`)
-    .replace('<script src="../shared/live-tv.js"></script>', `<script nonce="${lgNonce}">${inlineScript(liveTvSource)}</script>`)
-    .replace('<script src="../shared/watch-browse.js"></script>', `<script nonce="${lgNonce}">${inlineScript(watchBrowseSource)}</script>`)
-    .replace('<script src="config.js"></script>', `<script nonce="${lgNonce}">${inlineScript(tvConfigSource)}</script>`)
-    .replace('<script src="../node_modules/hls.js/dist/hls.min.js"></script>', `<script nonce="${lgNonce}">${inlineScript(hlsSource)}</script>`)
-    .replace('<script src="tv.js"></script>', `<script nonce="${lgNonce}">${inlineScript(fs.readFileSync(path.join(tvRoot, 'tv.js'), 'utf8'))}</script>`);
+    .replace("script-src 'self'; style-src 'self';", () => `script-src 'nonce-${lgNonce}'; style-src 'nonce-${lgNonce}';`)
+    .replace('<link rel="icon" href="../assets/icon.png" />', () => `<link rel="icon" href="${iconData}" />`)
+    .replace('<link rel="stylesheet" href="tv.css" />', () => `<style nonce="${lgNonce}">${fs.readFileSync(path.join(tvRoot, 'tv.css'), 'utf8')}</style>`)
+    .replaceAll('src="../assets/harbor-mark.svg"', () => `src="${logoData}"`)
+    .replace('<script src="../shared/series-metadata.js"></script>', () => `<script nonce="${lgNonce}">${inlineScript(seriesMetadataSource)}</script>`)
+    .replace('<script src="../shared/live-tv.js"></script>', () => `<script nonce="${lgNonce}">${inlineScript(liveTvSource)}</script>`)
+    .replace('<script src="../shared/watch-browse.js"></script>', () => `<script nonce="${lgNonce}">${inlineScript(watchBrowseSource)}</script>`)
+    .replace('<script src="config.js"></script>', () => `<script nonce="${lgNonce}">${inlineScript(tvConfigSource)}</script>`)
+    .replace('<script src="../node_modules/hls.js/dist/hls.min.js"></script>', () => `<script nonce="${lgNonce}">${inlineScript(hlsSource)}</script>`)
+    .replace('<script src="tv.js"></script>', () => `<script nonce="${lgNonce}">${inlineScript(fs.readFileSync(path.join(tvRoot, 'tv.js'), 'utf8'))}</script>`);
   fs.writeFileSync(path.join(lgRoot, 'index.html'), lgHtml);
   for (const file of ['config.js', 'tv.css', 'tv.js']) {
     fs.copyFileSync(path.join(tvRoot, file), path.join(lgRoot, file));
