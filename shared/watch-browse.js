@@ -50,6 +50,7 @@
     ],
     Anime: [
       { id: 'popular', label: 'Popular', source: 'tmdb', endpoint: 'discover/tv', mediaType: 'anime', params: { with_genres: '16', with_original_language: 'ja', sort_by: 'popularity.desc' } },
+      { id: 'movies', label: 'Movies', source: 'tmdb', endpoint: 'discover/movie', mediaType: 'movie', params: { with_genres: '16', with_original_language: 'ja', sort_by: 'popularity.desc' }, local: { mediaType: 'movie' } },
       { id: 'airing-today', label: 'Airing Today', source: 'tmdb', endpoint: 'discover/tv', mediaType: 'anime', params: { with_genres: '16', with_original_language: 'ja', sort_by: 'popularity.desc', 'air_date.gte': '$today', 'air_date.lte': '$today' } },
       { id: 'top-rated', label: 'Top Rated', source: 'tmdb', endpoint: 'discover/tv', mediaType: 'anime', params: { with_genres: '16', with_original_language: 'ja', sort_by: 'vote_average.desc', 'vote_count.gte': '200' }, local: { minRating: 8 } },
       { id: 'action', label: 'Action', source: 'tmdb', endpoint: 'discover/tv', mediaType: 'anime', params: { with_genres: '16,10759', with_original_language: 'ja', sort_by: 'popularity.desc' }, local: { terms: ['action', 'adventure'] } },
@@ -110,6 +111,12 @@
 
   function getFilters(section) {
     return (taxonomy[section] || []).map(function (filter) { return Object.assign({}, filter); });
+  }
+
+  // Classification is independent of movie/series playback identity.
+  function isTmdbAnime(item) {
+    return Boolean(item && Array.isArray(item.genre_ids) && item.genre_ids.indexOf(16) >= 0
+      && (item.original_language === 'ja' || (Array.isArray(item.origin_country) && item.origin_country.indexOf('JP') >= 0)));
   }
 
   function getFilter(section, filterId) {
@@ -178,6 +185,7 @@
     var filter = getFilter(section, filterId);
     var rules = filter && (filter.local || (filter.terms ? { terms: filter.terms } : null));
     if (!filter || !rules) return true;
+    if (rules.mediaType && item.type !== rules.mediaType) return false;
     if (rules.minRating && Number(item.rating || 0) < rules.minRating) return false;
     if (!rules.terms || !rules.terms.length) return true;
     var haystack = normalize([item.name, item.overview, item.summary, (item.sections || []).join(' '), item.section, item.meta].join(' '));
@@ -587,6 +595,7 @@
   }
 
   return {
+    isTmdbAnime: isTmdbAnime,
     normalizeProviderShow: normalizeProviderShow,
     providerShowsPage: providerShowsPage,
     loadProviderShows: loadProviderShows,

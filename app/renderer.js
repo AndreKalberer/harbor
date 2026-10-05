@@ -832,9 +832,7 @@ const formatTmdbItem = (item) => {
   const date = item.release_date || item.first_air_date || '';
   const year = date ? date.split('-')[0] : '2024';
   const rating = item.vote_average ? item.vote_average.toFixed(1) : '8.0';
-  const isAnime = isTv
-    && (item.genre_ids || []).includes(16)
-    && (item.original_language === 'ja' || (item.origin_country || []).includes('JP'));
+  const isAnime = watchBrowseApi.isTmdbAnime(item);
   const sportsText = normalizeSearchText([title, item.overview].filter(Boolean).join(' '));
   const isSports = /\b(sport|football|soccer|basketball|baseball|hockey|tennis|boxing|wrestling|racing|formula 1|ufc)\b/.test(sportsText);
   const primarySection = isAnime ? 'Anime' : (isTv ? 'TV Show' : 'Movie');
@@ -845,7 +843,7 @@ const formatTmdbItem = (item) => {
     tmdbId: String(item.id),
     name: title,
     category: 'Watch',
-    type: isAnime ? 'anime' : (isTv ? 'tv' : 'movie'),
+    type: isTv ? (isAnime ? 'anime' : 'tv') : 'movie',
     year: year,
     rating: rating,
     sections: [...new Set([primarySection, isTv ? 'Series' : 'Feature', ...genres, ...(isSports ? ['Sports'] : [])])],
@@ -945,6 +943,10 @@ const localWatchBrowseItems = () => getSectionItems('Watch', activeSubcategory)
   .filter((item) => itemMatchesWatchFilter(item));
 
 const loadActiveWatchBrowse = async ({ append = false, requestedPage = 1 } = {}) => {
+  // Movie and TV IDs belong to separate TMDB namespaces. Keep stored IDs intact.
+  const watchBrowseItemKey = (item) => item.tmdbId
+    ? [item.type === 'movie' ? 'movie' : 'tv', item.tmdbId].join(':')
+    : mediaKey(item);
   if (activeCategory !== 'Watch' || activeSubcategory === 'All') return;
   const filter = watchBrowseApi.getFilter(activeSubcategory, activeWatchFilter);
   if (!filter) return;
@@ -999,6 +1001,7 @@ const loadActiveWatchBrowse = async ({ append = false, requestedPage = 1 } = {})
       const params = new URLSearchParams({ api_key: TMDB_API_KEY, ...request.params });
       const data = await fetchSearchJson(TMDB_BASE + '/' + request.endpoint + '?' + params.toString(), undefined, CATALOG_REQUEST_TIMEOUT_MS);
       items = (data.results || []).map((item) => formatTmdbItem({ ...item, media_type: request.mediaType === 'movie' ? 'movie' : 'tv' }));
+      if (activeSubcategory === 'Anime') items = items.filter(item => itemMatchesSubcategory(item, 'Anime'));
       canLoadMore = Number(data.page || page) < Number(data.total_pages || 0);
     } else {
       items = localWatchBrowseItems();
@@ -1006,7 +1009,7 @@ const loadActiveWatchBrowse = async ({ append = false, requestedPage = 1 } = {})
 
     if (generation !== watchBrowseGeneration || key !== currentWatchBrowseKey()) return;
     watchBrowseItems = append
-      ? [...watchBrowseItems, ...items.filter((item) => !watchBrowseItems.some((existing) => mediaKey(existing) === mediaKey(item)))]
+      ? [...watchBrowseItems, ...items.filter((item) => !watchBrowseItems.some((existing) => watchBrowseItemKey(existing) === watchBrowseItemKey(item)))]
       : items;
     watchBrowsePage = page;
     watchBrowseCanLoadMore = (filter.source === 'tmdb' || filter.source === 'provider-shows' || activeSubcategory === 'Movies') && canLoadMore;
@@ -1330,7 +1333,7 @@ const applySearchBatch = (term, sequence, scope, localResults, batches, totals, 
 const searchGlobalMedia = async (term, sequence, scope, page = 1, append = false) => {
   const normalizedTerm = normalizeSearchText(term);
   if (normalizedTerm.length < 2 || !isCurrentSearchRequest(term, sequence, scope)) return;
-  if (scope.category === 'Watch' && ['Movies', 'TV Shows'].includes(scope.subcategory) && !TMDB_API_KEY) {
+  if (scope.category === 'Watch' && ['Movies', 'TV Shows', 'Anime'].includes(scope.subcategory) && !TMDB_API_KEY) {
     currentMediaList = localSearchResults(term, scope);
     searchState = { term: normalizedTerm, loading: false, total: currentMediaList.length, page: 1, canLoadMore: false, partial: false };
     renderResources();
@@ -1360,7 +1363,7 @@ const searchGlobalMedia = async (term, sequence, scope, page = 1, append = false
     {
       key: 'watch-movies',
       category: 'Watch',
-      subcategories: ['Movies', 'Sports'],
+      subcategories: ['Movies', 'Anime', 'Sports'],
       exactSubcategories: ['Movies'],
       url: TMDB_BASE + '/search/movie?api_key=' + TMDB_API_KEY + '&query=' + encodeURIComponent(term) + '&include_adult=false&page=' + page,
       format: (data) => ({

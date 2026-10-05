@@ -230,21 +230,20 @@
   }
 
   function normalizeTmdb(item, type) {
-    var mediaType = type || item.media_type || (item.title ? 'movie' : 'tv');
+    var mediaType = type === 'anime' ? 'tv' : type || item.media_type || (item.title ? 'movie' : 'tv');
     if (mediaType === 'person') return null;
-    var isAnime = mediaType !== 'movie'
-      && (item.genre_ids || []).indexOf(16) >= 0
-      && (item.original_language === 'ja' || (item.origin_country || []).indexOf('JP') >= 0);
-    if (isAnime) mediaType = 'anime';
+    var isAnime = watchBrowseApi.isTmdbAnime(item);
+    var isMovie = mediaType === 'movie';
+    if (isAnime && !isMovie) mediaType = 'anime';
     return {
       id: mediaType + '-' + item.id,
       tmdbId: String(item.id),
       name: item.title || item.name || 'Untitled',
       category: 'Watch',
       type: mediaType,
-      section: mediaType === 'movie' ? 'Movies' : isAnime ? 'Anime' : 'TV Shows',
+      section: isAnime ? 'Anime' : isMovie ? 'Movies' : 'TV Shows',
       tags: (item.genre_ids || []).map(function (genreId) { return TMDB_GENRE_LABELS[genreId]; }).filter(Boolean),
-      meta: (item.release_date || item.first_air_date || '').slice(0, 4) + ' · ' + (mediaType === 'movie' ? 'Movie' : isAnime ? 'Anime' : 'Series'),
+      meta: (item.release_date || item.first_air_date || '').slice(0, 4) + ' · ' + (isAnime ? (isMovie ? 'Anime Movie' : 'Anime') : isMovie ? 'Movie' : 'Series'),
       summary: item.overview || 'Open this title in Harbor.',
       image: item.backdrop_path || item.poster_path ? TMDB_IMAGE + (item.backdrop_path || item.poster_path) : ''
     };
@@ -364,7 +363,7 @@
     var suffix = '?api_key=' + TMDB_KEY + '&include_adult=false&page=' + page;
     if (query) {
       var requests = [];
-      if (state.subcategory === 'All' || state.subcategory === 'Movies') requests.push(requestJson(base + 'search/movie' + suffix + '&query=' + encodeURIComponent(query)).then(function (data) { return data.results.map(function (item) { return normalizeTmdb(item, 'movie'); }); }));
+      if (state.subcategory === 'All' || state.subcategory === 'Movies' || state.subcategory === 'Anime') requests.push(requestJson(base + 'search/movie' + suffix + '&query=' + encodeURIComponent(query)).then(function (data) { return data.results.map(function (item) { return normalizeTmdb(item, 'movie'); }); }));
       if (state.subcategory === 'All' || state.subcategory === 'TV Shows' || state.subcategory === 'Anime') requests.push(requestJson(base + 'search/tv' + suffix + '&query=' + encodeURIComponent(query)).then(function (data) { return data.results.map(function (item) { return normalizeTmdb(item, 'tv'); }); }));
       return Promise.all(requests).then(function (groups) {
         return groups.reduce(function (all, group) { return all.concat(group); }, []).filter(function (item) { return item && matchesWatchSubcategory(item) && matchesWatchFilter(item) && itemMatchesQuery(item, query); });
@@ -375,9 +374,14 @@
       var parameters = Object.assign({ api_key: TMDB_KEY }, browseRequest.params);
       var browseQuery = Object.keys(parameters).map(function (key) { return encodeURIComponent(key) + '=' + encodeURIComponent(parameters[key]); }).join('&');
       return requestJson(base + browseRequest.endpoint + '?' + browseQuery).then(function (data) {
-        return (data.results || []).map(function (item) {
+        var items = (data.results || []).map(function (item) {
           return normalizeTmdb(item, browseRequest.mediaType === 'movie' ? 'movie' : browseRequest.mediaType);
         }).filter(Boolean);
+        if (state.subcategory === 'Anime') {
+          items = items.filter(matchesWatchSubcategory);
+          items.catalogCanLoadMore = Number(data.page || page) < Number(data.total_pages || 0);
+        }
+        return items;
       });
     }
     return requestJson(base + 'trending/all/week' + suffix).then(function (data) { return data.results.map(function (item) { return normalizeTmdb(item, item.media_type); }).filter(Boolean); });
@@ -1051,7 +1055,7 @@
     return state.subcategory === 'All'
       || (state.subcategory === 'Movies' && item.type === 'movie')
       || (state.subcategory === 'TV Shows' && item.type === 'tv')
-      || (state.subcategory === 'Anime' && item.type === 'anime')
+      || (state.subcategory === 'Anime' && (item.type === 'anime' || item.section === 'Anime'))
       || (state.subcategory === 'Sports' && item.section === 'Sports')
       || (state.subcategory === 'Live TV' && item.section === 'Live TV');
   }
@@ -1064,6 +1068,7 @@
       rating: item.rating,
       meta: item.meta,
       section: item.section,
+      type: item.type,
       sections: [item.section].concat(item.tags || [])
     }, state.subcategory, state.watchFilter);
   }
