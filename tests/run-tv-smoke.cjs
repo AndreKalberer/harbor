@@ -46,8 +46,8 @@ const removeProfileDirectory = (profileDirectory) => {
   }
 };
 
-const runCapture = (port) => new Promise((resolve, reject) => {
-  const child = spawn(process.execPath, [capturePath, String(port)], {
+const runCapture = (port, captureScript = capturePath) => new Promise((resolve, reject) => {
+  const child = spawn(process.execPath, [captureScript, String(port)], {
     cwd: projectRoot,
     env: process.env,
     stdio: 'inherit',
@@ -94,6 +94,7 @@ const run = async () => {
     }
     if (Date.now() >= deadline) throw new Error(`Timed out waiting for Harbor TV.\n${output.join('')}`);
     await runCapture(port);
+    await runCapture(port, path.join(__dirname, 'tv-section-focus-capture.cjs'));
   } finally {
     await stopProcess(harbor);
     removeProfileDirectory(profileDirectory);

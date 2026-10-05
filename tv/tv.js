@@ -609,14 +609,14 @@
     state.section = section;
     state.subcategory = (sections[section] || ['All'])[0]; state.watchFilter = ''; state.liveCountry = ''; state.liveLanguage = ''; state.liveWindow = 'now'; state.liveFacets = { countries: [], languages: [], sports: [] }; state.liveTotal = 0; state.liveCached = false; state.query = ''; state.page = 1;
     document.body.dataset.section = section;
-    document.querySelectorAll('[data-section]').forEach(function (button) {
+    document.querySelectorAll('.tv-nav button[data-section]').forEach(function (button) {
       var active = button.getAttribute('data-section') === section;
       button.classList.toggle('active', active);
       button.setAttribute('aria-current', active ? 'page' : 'false');
     });
     loadItems(false).then(function () {
       if (state.section !== section) return;
-      var activeNav = document.querySelector('[data-section="' + section + '"]') || document.querySelector('[data-action="watch"]');
+      var activeNav = document.querySelector('.tv-nav button[data-section="' + section + '"]') || document.querySelector('[data-action="watch"]');
       if (activeNav) activeNav.focus();
       window.scrollTo(0, 0);
     });
@@ -1122,7 +1122,7 @@
     return '';
   }
 
-  document.querySelectorAll('[data-section]').forEach(function (button) { button.addEventListener('click', function () { setSection(button.getAttribute('data-section')); }); });
+  document.querySelectorAll('.tv-nav button[data-section]').forEach(function (button) { button.addEventListener('click', function () { setSection(button.getAttribute('data-section')); }); });
   document.querySelector('[data-action="watch"]').addEventListener('click', function (event) { event.preventDefault(); setSection('Watch'); });
   document.getElementById('search-button').addEventListener('click', function () { focusBeforeOverlay = document.activeElement; searchPanel.hidden = false; syncOverlayAccessibility(); searchInput.value = state.query; searchInput.placeholder = 'Search ' + (state.subcategory === 'All' ? state.section : state.subcategory); setTimeout(function () { searchInput.focus(); searchInput.select(); }, 0); });
   document.getElementById('list-button').addEventListener('click', function () { setSection('Home'); });
