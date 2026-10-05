@@ -113,6 +113,10 @@ body[data-section="Listen"] .media-art { height: auto; min-height: 0; max-height
 .player-stage { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
 #tv-frame, #tv-video { width: 100%; height: 100%; border: 0; background: black; }
 #tv-frame.focusable:focus, #tv-frame.focusable.focused, #tv-video.focusable:focus, #tv-video.focusable.focused { z-index: 1; outline: none; box-shadow: inset 0 0 0 5px var(--violet); transform: none; }
+.audio-controls { position: absolute; top: 50%; left: 50%; width: min(760px, 90vw); transform: translate(-50%, -50%); text-align: center; }
+.audio-time { font-size: 28px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.audio-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 24px; }
+.audio-actions button { min-height: 64px; }
 #tv-audio { position: absolute; top: 50%; left: 50%; width: 760px; max-width: 80vw; transform: translate(-50%, -50%); }
 #player-status { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(100, 55, 210, 0.28), transparent 26rem), linear-gradient(145deg, #10061d, #030106 70%); text-align: center; }
 #player-status h3 { width: 84vw; max-width: 1180px; margin: 10px 0 8px; font-size: 50px; font-size: clamp(38px, 4vw, 66px); line-height: 1.05; letter-spacing: -0.035em; }
