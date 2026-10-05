@@ -13,6 +13,7 @@ const defaultSmokes = [
   'search-smoke.cjs',
   'watch-filters-smoke.cjs',
   'provider-shows-smoke.cjs',
+  'anime-films-smoke.cjs',
   'smoke-library.cjs',
   'card-artwork-smoke.cjs'
 ];

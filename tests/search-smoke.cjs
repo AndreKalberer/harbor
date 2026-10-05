@@ -245,14 +245,16 @@ const run = async () => {
   await delay(500);
   const animeScoped = await evaluate(`({
     scope: [activeCategory, activeSubcategory],
+    configured: Boolean(TMDB_API_KEY),
+    matchesAnime: currentMediaList.every(item => itemMatchesSubcategory(item, 'Anime')),
     types: [...new Set(currentMediaList.map((item) => item.type))],
     requests: window.__harborSearchRequests.filter((url) => url.includes('/search/movie?') || url.includes('/search/tv?')),
     placeholder: document.querySelector('#resource-search').placeholder
   })`);
   if (animeScoped.scope.join('|') !== 'Watch|Anime'
-      || animeScoped.types.join(',') !== 'anime'
-      || animeScoped.requests.length !== 1
-      || !animeScoped.requests[0].includes('/search/tv')
+      || !animeScoped.matchesAnime
+      || animeScoped.requests.length !== (animeScoped.configured ? 2 : 0)
+      || (animeScoped.configured && (!animeScoped.requests.some(url => url.includes('/search/tv')) || !animeScoped.requests.some(url => url.includes('/search/movie'))))
       || animeScoped.placeholder !== 'Search Anime') {
     throw new Error('Anime search escaped its active subcategory: ' + JSON.stringify(animeScoped));
   }
