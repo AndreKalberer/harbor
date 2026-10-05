@@ -75,6 +75,10 @@
     var item = {
       id: text(String(value.id || ''), 300),
       tmdbId: text(String(value.tmdbId || ''), 100),
+      providerListings: value.type === 'movie' && /^\d+$/.test(String(value.tmdbId || '')) && String(value.tmdbId).length <= 100 && Array.isArray(value.providerListings)
+        && value.providerListings.some(function (listing) {
+          return listing && listing.providerId === 'vidapi' && listing.mediaType === 'movie' && String(listing.tmdbId) === String(value.tmdbId);
+        }) ? [{ providerId: 'vidapi', mediaType: 'movie', tmdbId: String(value.tmdbId) }] : [],
       name: text(value.name, 300),
       category: text(value.category, 80),
       type: text(value.type, 80),

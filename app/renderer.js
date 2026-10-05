@@ -434,12 +434,21 @@ const STREAM_PROVIDERS = Object.fromEntries(playbackProvidersApi.providers.map((
   }
 ]));
 providerDisclosure.textContent = playbackProvidersApi.providers.map((provider) => provider.name).join(', ') + '.';
-streamServerSelect.replaceChildren(...playbackProvidersApi.providers.map((provider) => {
-  const option = document.createElement('option');
-  option.value = provider.id;
-  option.textContent = provider.name;
-  return option;
-}));
+const updateStreamServerOptions = (item) => {
+  const listedIds = playbackProvidersApi.listedMovieProviders(item).map(provider => provider.id);
+  streamServerSelect.replaceChildren(...playbackProvidersApi.serverGroups(item).map((group) => {
+    const options = document.createElement('optgroup');
+    options.label = group.label;
+    options.append(...group.providers.map((provider) => {
+      const option = document.createElement('option');
+      option.value = provider.id;
+      option.textContent = provider.name + (listedIds.includes(provider.id) ? ' · listed by VidAPI' : ' · try server');
+      return option;
+    }));
+    return options;
+  }));
+};
+updateStreamServerOptions(null);
 
 const WATCH_CATALOG = EXPANDED_MASTER_CATALOG.filter((item) => item.category === 'Watch');
 let directoryLinkCatalog = [];
@@ -522,6 +531,7 @@ const mediaKey = (item) => String(item?.id || [item?.category, item?.type, item?
 const mediaSnapshot = (item) => ({
   id: item.id,
   tmdbId: item.tmdbId,
+  providerListings: playbackProvidersApi.listedMovieProviders(item).map(provider => ({ providerId: provider.id, mediaType: 'movie', tmdbId: String(item.tmdbId) })),
   name: item.name,
   category: item.category,
   type: item.type,
@@ -908,6 +918,7 @@ const formatVidSrcMovie = (item) => {
     id: 'vidsrc-movie-' + id,
     tmdbId: id,
     preferredProviderId: 'vidapi',
+    providerListings: [{ providerId: 'vidapi', mediaType: 'movie', tmdbId: id }],
     name: item.title || item.name || 'Untitled movie',
     category: 'Watch',
     type: 'movie',
@@ -1986,7 +1997,9 @@ const startStreamPlayback = async (item, season = 1, episode = 1) => {
   activeMedia = item;
   activeSeason = season;
   activeEpisode = episode;
-  const preferredProvider = item.preferredProviderId || (String(item.id || '').startsWith('vidsrc-movie-') ? 'vidapi' : null);
+  updateStreamServerOptions(item);
+  const listedProvider = playbackProvidersApi.listedMovieProviders(item)[0];
+  const preferredProvider = listedProvider?.id || item.preferredProviderId || (String(item.id || '').startsWith('vidsrc-movie-') ? 'vidapi' : null);
   if (preferredProvider && STREAM_PROVIDERS[preferredProvider]) activeProviderKey = preferredProvider;
   activeSeriesSeasons = [];
   streamPlaybackStartedAt = Date.now();

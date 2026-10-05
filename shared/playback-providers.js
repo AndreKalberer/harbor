@@ -96,6 +96,27 @@
     return [provider.id, provider];
   }));
 
+  // A catalog listing identifies its provider, not proof that a stream starts.
+  // Preference, a valid embed URL, HTTP 200, and failed requests are not membership.
+  function listedMovieProviders(item) {
+    if (!item || item.type !== 'movie' || !/^\d+$/.test(String(item.tmdbId || ''))) return [];
+    return providers.filter(function (provider) {
+      return provider.id === 'vidapi' && Array.isArray(item.providerListings) && item.providerListings.some(function (listing) {
+        return listing && listing.providerId === provider.id && listing.mediaType === 'movie'
+          && String(listing.tmdbId) === String(item.tmdbId);
+      });
+    });
+  }
+
+  function serverGroups(item) {
+    var listed = listedMovieProviders(item);
+    var listedIds = listed.map(function (provider) { return provider.id; });
+    return [
+      { label: 'Listed for this movie · playback not verified', providers: listed },
+      { label: 'Other servers · availability unknown', providers: providers.filter(function (provider) { return !listedIds.includes(provider.id); }) }
+    ].filter(function (group) { return group.providers.length; });
+  }
+
   function resolve(providerId, tmdbId, isSeries, season, episode) {
     var provider = providerById[providerId] || providerById.vidlink;
     var template = isSeries ? provider.seriesTemplate : provider.movieTemplate;
@@ -110,6 +131,8 @@
     allowedHosts: Object.freeze([...new Set(providers.flatMap(function (provider) {
       return [provider.host, ...(provider.navigationHosts || [])];
     }))]),
+    listedMovieProviders: listedMovieProviders,
+    serverGroups: serverGroups,
     resolve: resolve
   });
 });
