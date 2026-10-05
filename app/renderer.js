@@ -133,6 +133,8 @@ let pdfZoom = 1.15;
 let comicEntries = [];
 let comicArchive = null;
 let comicPageNumber = 0;
+let comicDisplayedPageNumber = 0;
+let comicRenderGeneration = 0;
 let epubState = null;
 let localLibraryGeneration = 0;
 let selectedGameToken = null;
@@ -179,6 +181,7 @@ const resetLocalLibrary = () => {
   pdfDocument = null;
   comicArchive = null;
   comicEntries = [];
+  comicPage.removeAttribute('src');
   epubState = null;
   epubDocument.replaceChildren();
   readerMode = 'empty';
@@ -305,31 +308,69 @@ const naturalNameSort = (left, right) => left.localeCompare(right, undefined, { 
 
 const renderComicPage = async () => {
   if (!comicArchive || !comicEntries.length) return;
+  const generation = localLibraryGeneration;
+  const renderGeneration = ++comicRenderGeneration;
+  const archive = comicArchive;
+  const pageNumber = comicPageNumber;
+  const entries = comicEntries;
+  const isCurrent = () => generation === localLibraryGeneration
+    && renderGeneration === comicRenderGeneration && readerMode === 'comic' && comicArchive === archive;
+  let image;
+  try {
+    image = await archive.file(entries[pageNumber]).async('blob');
+  } catch (error) {
+    if (isCurrent()) throw error;
+    return;
+  }
+  if (!isCurrent()) return;
   releaseObjectUrls();
-  const image = await comicArchive.file(comicEntries[comicPageNumber]).async('blob');
   comicPage.src = rememberObjectUrl(image);
-  comicPage.alt = `Comic page ${comicPageNumber + 1}`;
-  pageStatus.textContent = `Page ${comicPageNumber + 1} of ${comicEntries.length}`;
-  previousPageButton.disabled = comicPageNumber <= 0;
-  nextPageButton.disabled = comicPageNumber >= comicEntries.length - 1;
+  comicDisplayedPageNumber = pageNumber;
+  comicPage.alt = `Comic page ${pageNumber + 1}`;
+  pageStatus.textContent = `Page ${pageNumber + 1} of ${entries.length}`;
+  previousPageButton.disabled = pageNumber <= 0;
+  nextPageButton.disabled = pageNumber >= entries.length - 1;
 };
 
 const openComic = async (file) => {
-  comicArchive = await JSZip.loadAsync(await file.arrayBuffer());
-  comicEntries = Object.keys(comicArchive.files)
-    .filter((name) => !comicArchive.files[name].dir && /\.(?:png|jpe?g|webp|gif)$/i.test(name))
+  const generation = localLibraryGeneration;
+  const archive = await JSZip.loadAsync(await file.arrayBuffer());
+  if (generation !== localLibraryGeneration) return;
+  const entries = Object.keys(archive.files)
+    .filter((name) => !archive.files[name].dir && /\.(?:png|jpe?g|webp|gif)$/i.test(name))
     .sort(naturalNameSort);
-  if (!comicEntries.length) throw new Error('No comic pages were found in this CBZ file.');
+  if (!entries.length) throw new Error('No comic pages were found in this CBZ file.');
+  comicArchive = archive;
+  comicEntries = entries;
   comicPageNumber = 0;
+  comicDisplayedPageNumber = 0;
   readerMode = 'comic';
   readerToolbar.hidden = false;
   comicViewerShell.hidden = false;
   await renderComicPage();
 };
 
+const navigateComicPage = async (direction) => {
+  const generation = localLibraryGeneration;
+  comicPageNumber += direction;
+  try {
+    await renderComicPage();
+  } catch (error) {
+    if (generation === localLibraryGeneration && readerMode === 'comic') {
+      comicPageNumber = comicDisplayedPageNumber;
+      mediaDetails.textContent = error.message || 'Could not open this comic page.';
+    }
+  }
+};
+
 const openLocalFile = async (file) => {
   if (!file) return;
   localLibraryGeneration += 1;
+  const generation = localLibraryGeneration;
+  comicArchive = null;
+  comicEntries = [];
+  comicPage.removeAttribute('src');
+  readerMode = 'loading';
   hideLibraryViews();
   releaseObjectUrls();
   epubState = null;
@@ -361,6 +402,12 @@ const openLocalFile = async (file) => {
       throw new Error('This file type is not supported yet.');
     }
   } catch (error) {
+    if (generation !== localLibraryGeneration) return;
+    hideLibraryViews();
+    releaseObjectUrls();
+    comicArchive = null;
+    comicEntries = [];
+    comicPage.removeAttribute('src');
     readerMode = 'error';
     playerPlaceholder.hidden = false;
     placeholderTitle.textContent = 'Could not open this file';
@@ -376,6 +423,11 @@ const chooseInstalledGame = async () => {
     gameStatus.textContent = result.message || 'That game could not be added.';
     return;
   }
+  localLibraryGeneration += 1;
+  comicArchive = null;
+  comicEntries = [];
+  comicPage.removeAttribute('src');
+  releaseObjectUrls();
   hideLibraryViews();
   readerMode = 'game';
   selectedGameToken = result.token;
@@ -409,8 +461,7 @@ previousPageButton.addEventListener('click', () => {
     pdfPageNumber -= 1;
     void renderPdfPage();
   } else if (readerMode === 'comic' && comicPageNumber > 0) {
-    comicPageNumber -= 1;
-    void renderComicPage();
+    void navigateComicPage(-1);
   } else if (readerMode === 'epub') {
     void navigateEpubChapter(-1);
   }
@@ -421,8 +472,7 @@ nextPageButton.addEventListener('click', () => {
     pdfPageNumber += 1;
     void renderPdfPage();
   } else if (readerMode === 'comic' && comicPageNumber < comicEntries.length - 1) {
-    comicPageNumber += 1;
-    void renderComicPage();
+    void navigateComicPage(1);
   } else if (readerMode === 'epub') {
     void navigateEpubChapter(1);
   }

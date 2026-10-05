@@ -212,6 +212,91 @@ const run = async () => {
     return { mode: readerMode, pages: comicEntries, status: pageStatus.textContent, source: comicPage.src.startsWith('blob:') };
   })()`);
 
+  const comicCancellation = await evaluate(`(async () => {
+    const zip = new JSZip();
+    const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+    for (const name of ['1.png', '2.png', '3.png']) zip.file(name, pixel, { base64: true });
+    const buffer = await zip.generateAsync({ type: 'arraybuffer' });
+    const makeComic = () => new File([buffer], 'comic.cbz');
+    const snapshot = () => ({ mode: readerMode, name: mediaName.textContent,
+      comicHidden: comicViewerShell.hidden, audioHidden: audioPlayerShell.hidden,
+      toolbarHidden: readerToolbar.hidden, urls: activeObjectUrls.size, details: mediaDetails.textContent });
+    const replace = async () => openLocalFile(new File([new Uint8Array([1])], 'newer.mp3', { type: 'audio/mpeg' }));
+    const results = [];
+    for (const action of ['clear', 'replace']) {
+      for (const rejects of [false, true]) {
+        resetLocalLibrary();
+        let complete;
+        const file = makeComic();
+        Object.defineProperty(file, 'arrayBuffer', { value: () => new Promise((resolve, reject) => {
+          complete = () => rejects ? reject(new Error('Old archive failed')) : resolve(buffer);
+        }) });
+        const opening = openLocalFile(file);
+        if (action === 'clear') clearMediaButton.click(); else await replace();
+        const expected = snapshot();
+        complete();
+        await opening;
+        results.push({ phase: 'open', action, rejects, expected, actual: snapshot() });
+      }
+      for (const rejects of [false, true]) {
+        await openLocalFile(makeComic());
+        const entry = comicArchive.file('2.png');
+        const original = entry.async;
+        let complete;
+        entry.async = () => new Promise((resolve, reject) => { complete = async () => rejects
+          ? reject(new Error('Old page failed')) : resolve(await original.call(entry, 'blob')); });
+        const rendering = navigateComicPage(1);
+        if (action === 'clear') clearMediaButton.click(); else await replace();
+        const expected = snapshot();
+        await complete();
+        await rendering;
+        results.push({ phase: 'render', action, rejects, expected, actual: snapshot() });
+      }
+    }
+    await openLocalFile(makeComic());
+    const entry = comicArchive.file('2.png');
+    const original = entry.async;
+    let complete;
+    entry.async = () => new Promise(resolve => { complete = async () => resolve(await original.call(entry, 'blob')); });
+    comicPageNumber = 1;
+    const olderRender = renderComicPage();
+    comicPageNumber = 2;
+    await renderComicPage();
+    const latestSource = comicPage.src;
+    await complete();
+    await olderRender;
+    const reverseOrder = { sourceUnchanged: comicPage.src === latestSource, status: pageStatus.textContent, alt: comicPage.alt, urls: activeObjectUrls.size };
+    await openLocalFile(makeComic());
+    const goodSource = comicPage.src;
+    comicArchive.file('2.png').async = async () => { throw new Error('Current page failed'); };
+    await navigateComicPage(1);
+    const navigationFailure = { page: comicPageNumber, status: pageStatus.textContent,
+      sourceUnchanged: comicPage.src === goodSource, urls: activeObjectUrls.size, details: mediaDetails.textContent };
+    const originalLoad = JSZip.loadAsync;
+    JSZip.loadAsync = async (...args) => {
+      const archive = await originalLoad(...args);
+      archive.file('1.png').async = async () => { throw new Error('Initial page failed'); };
+      return archive;
+    };
+    try { await openLocalFile(makeComic()); } finally { JSZip.loadAsync = originalLoad; }
+    const initialFailure = snapshot();
+    await openLocalFile(new File([new Uint8Array([1])], 'broken.cbz'));
+    return { results, reverseOrder, navigationFailure, initialFailure, failure: snapshot() };
+  })()`);
+  for (const result of comicCancellation.results) {
+    assert.deepEqual(result.actual, result.expected, 'Stale CBZ ' + result.phase + ' after ' + result.action + (result.rejects ? ' rejection' : ''));
+  }
+  assert.deepEqual(comicCancellation.reverseOrder, { sourceUnchanged: true, status: 'Page 3 of 3', alt: 'Comic page 3', urls: 1 });
+  assert.deepEqual(comicCancellation.navigationFailure, { page: 0, status: 'Page 1 of 3', sourceUnchanged: true, urls: 1, details: 'Current page failed' });
+  assert.equal(comicCancellation.initialFailure.mode, 'error');
+  assert.equal(comicCancellation.initialFailure.comicHidden, true);
+  assert.equal(comicCancellation.initialFailure.toolbarHidden, true);
+  assert.equal(comicCancellation.initialFailure.urls, 0);
+  assert.equal(comicCancellation.failure.mode, 'error');
+  assert.equal(comicCancellation.failure.comicHidden, true);
+  assert.equal(comicCancellation.failure.toolbarHidden, true);
+  assert.equal(comicCancellation.failure.urls, 0);
+
   const pdf = await evaluate(`(async () => {
     const objects = [
       '<< /Type /Catalog /Pages 2 0 R >>',
@@ -243,7 +328,7 @@ const run = async () => {
     fs.writeFileSync(path.join(artifactDirectory, 'library-smoke.png'), Buffer.from(screenshot.data, 'base64'));
   }
   socket.close();
-  process.stdout.write(`${JSON.stringify({ shell, onboarding, epub, epubNavigation, comic, pdf, gameBoundary, savedGameBoundary }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ shell, onboarding, epub, epubNavigation, comic, comicCancellation, pdf, gameBoundary, savedGameBoundary }, null, 2)}\n`);
 };
 
 run().catch((error) => {
