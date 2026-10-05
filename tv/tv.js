@@ -129,6 +129,13 @@
   var tvFrame = document.getElementById('tv-frame');
   var tvVideo = document.getElementById('tv-video');
   var tvAudio = document.getElementById('tv-audio');
+  var audioControls = document.getElementById('audio-controls');
+  var audioToggle = document.getElementById('audio-toggle');
+  var audioRewind = document.getElementById('audio-rewind');
+  var audioForward = document.getElementById('audio-forward');
+  var audioTime = document.getElementById('audio-time');
+  var audioGeneration = 0;
+  var audioPlayAttempt = 0;
   var toast = document.getElementById('toast');
   var toastTimer = null;
 
@@ -858,6 +865,70 @@
     }, 900);
   }
 
+  function activeAudio() {
+    return !playerPanel.hidden && state.playerMode === 'audio' && !tvAudio.hidden;
+  }
+
+  function audioClock(seconds) {
+    if (!isFinite(seconds) || seconds < 0) return '—';
+    var whole = Math.floor(seconds);
+    return Math.floor(whole / 60) + ':' + ('0' + whole % 60).slice(-2);
+  }
+
+  function syncAudioControls() {
+    audioToggle.textContent = tvAudio.paused || tvAudio.ended ? 'Play' : 'Pause';
+    audioTime.textContent = audioClock(tvAudio.currentTime) + ' / ' + audioClock(tvAudio.duration);
+    var seekable = activeAudio() && isFinite(tvAudio.duration) && tvAudio.duration > 0 && tvAudio.seekable.length > 0;
+    audioRewind.disabled = !seekable;
+    audioForward.disabled = !seekable;
+    if (!seekable && activeAudio() && !audioControls.hidden && (document.activeElement === audioRewind || document.activeElement === audioForward)) audioToggle.focus();
+  }
+
+  function failAudio(detail) {
+    if (!activeAudio()) return;
+    clearTimeout(playerRouteTimer);
+    clearTimeout(playerReadyTimer);
+    playerReady = false;
+    pauseAudio();
+    audioControls.hidden = true;
+    showPlayerStatus('Unable to play right now', detail, true);
+    playerRetry.focus();
+  }
+
+  function pauseAudio() {
+    audioPlayAttempt += 1;
+    tvAudio.pause();
+  }
+
+  function playAudio() {
+    if (!activeAudio()) return;
+    var generation = audioGeneration;
+    var attemptId = ++audioPlayAttempt;
+    if (tvAudio.ended || (isFinite(tvAudio.duration) && tvAudio.duration > 0 && tvAudio.currentTime >= tvAudio.duration)) tvAudio.currentTime = 0;
+    try {
+      var attempt = tvAudio.play();
+      if (attempt && attempt.catch) attempt.catch(function () { if (generation === audioGeneration && attemptId === audioPlayAttempt) failAudio('This preview could not start. Try again.'); });
+    } catch (_) { failAudio('This preview could not start. Try again.'); }
+  }
+
+  function toggleAudio() {
+    if (!activeAudio()) return;
+    if (tvAudio.paused || tvAudio.ended) playAudio();
+    else pauseAudio();
+    syncAudioControls();
+  }
+
+  function seekAudio(delta) {
+    if (!activeAudio() || !isFinite(tvAudio.duration) || tvAudio.duration <= 0 || !tvAudio.seekable.length) return;
+    var target = Math.max(0, Math.min(tvAudio.duration, tvAudio.currentTime + delta));
+    for (var i = 0; i < tvAudio.seekable.length; i += 1) {
+      if (target < tvAudio.seekable.start(i)) target = tvAudio.seekable.start(i);
+      if (target <= tvAudio.seekable.end(i)) { tvAudio.currentTime = target; syncAudioControls(); return; }
+    }
+    tvAudio.currentTime = tvAudio.seekable.end(tvAudio.seekable.length - 1);
+    syncAudioControls();
+  }
+
   function markPlayerReady() {
     if (playerReady || playerPanel.hidden) return;
     playerReady = true;
@@ -869,7 +940,8 @@
     }
     playerReadyTimer = setTimeout(function () {
       playerStatus.hidden = true;
-      if (state.playerMode === 'video' && !tvVideo.hidden) tvVideo.focus();
+      if (activeAudio()) { audioControls.hidden = false; syncAudioControls(); audioToggle.focus(); }
+      else if (state.playerMode === 'video' && !tvVideo.hidden) tvVideo.focus();
       else focusPlayerFrame();
     }, 900);
   }
@@ -952,6 +1024,8 @@
   }
 
   function resetPlayer() {
+    audioGeneration += 1;
+    audioPlayAttempt += 1;
     clearTimeout(playerRouteTimer);
     clearTimeout(playerReadyTimer);
     clearTimeout(playerControlTimer);
@@ -965,7 +1039,9 @@
     destroyPlayerHls();
     tvFrame.hidden = true; tvFrame.src = 'about:blank';
     tvVideo.pause(); tvVideo.hidden = true; tvVideo.removeAttribute('src');
-    tvAudio.pause(); tvAudio.hidden = true; tvAudio.removeAttribute('src');
+    audioControls.hidden = true;
+    tvAudio.pause(); tvAudio.hidden = true; tvAudio.removeAttribute('src'); tvAudio.load();
+    syncAudioControls();
     showPlayerStatus('Getting it ready…', 'One moment.', false);
   }
 
@@ -990,7 +1066,8 @@
     if (item.preview) {
       state.playerMode = 'audio';
       tvAudio.src = item.preview; tvAudio.hidden = false;
-      playerRouteTimer = setTimeout(function () { showPlayerStatus('Unable to play right now', 'This preview did not respond.', true); }, 12000);
+      playerRouteTimer = setTimeout(function () { failAudio('This preview did not respond.'); }, 12000);
+      playAudio();
       return;
     }
     state.playerRoutes = streamRoutes(item, state.season, state.episode);
@@ -1179,9 +1256,13 @@
     if (playerEvent === 'play' || playerEvent === 'timeupdate') markPlayerReady();
   });
   tvVideo.addEventListener('canplay', function () { markPlayerReady(); });
-  tvAudio.addEventListener('canplay', function () { markPlayerReady(); });
+  tvAudio.addEventListener('canplay', function () { if (activeAudio()) markPlayerReady(); });
+  ['timeupdate', 'durationchange', 'loadedmetadata', 'progress', 'play', 'pause', 'ended'].forEach(function (name) { tvAudio.addEventListener(name, syncAudioControls); });
+  audioToggle.addEventListener('click', toggleAudio);
+  audioRewind.addEventListener('click', function () { seekAudio(-10); });
+  audioForward.addEventListener('click', function () { seekAudio(10); });
   tvVideo.addEventListener('error', function () { if (state.active && state.active.type === 'live') tryNextLiveStream(); else showPlayerStatus('Unable to play right now', 'The live channel could not be played.', true); });
-  tvAudio.addEventListener('error', function () { showPlayerStatus('Unable to play right now', 'This preview could not be played.', true); });
+  tvAudio.addEventListener('error', function () { failAudio('This preview could not be played.'); });
 
   document.addEventListener('focusin', function (event) {
     if (event.target && event.target.classList && event.target.classList.contains('focusable')) event.target.classList.add('focused');
@@ -1194,6 +1275,17 @@
     var key = event.key;
     var code = event.keyCode;
     var direction = directionForEvent(event);
+    if (activeAudio() && (key === 'MediaPlayPause' || key === 'MediaPlay' || key === 'MediaPause' || key === 'MediaFastForward' || key === 'MediaRewind' || [179, 415, 19, 417, 412].indexOf(code) >= 0)) {
+      event.preventDefault(); event.stopPropagation();
+      if (event.repeat) return;
+      if (key === 'MediaPlay' || code === 415) playAudio();
+      else if (key === 'MediaPause' || code === 19) pauseAudio();
+      else if (key === 'MediaFastForward' || code === 417) seekAudio(10);
+      else if (key === 'MediaRewind' || code === 412) seekAudio(-10);
+      else toggleAudio();
+      syncAudioControls();
+      return;
+    }
     if (key === 'Tab' && (!playerPanel.hidden || !detailPanel.hidden || !searchPanel.hidden)) {
       var tabStops = visibleFocusables();
       if (tabStops.length) {
