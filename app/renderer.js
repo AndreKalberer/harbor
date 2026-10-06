@@ -128,6 +128,9 @@ const addGamePlaceholderButton = document.querySelector('#add-game-placeholder-b
 
 let readerMode = 'empty';
 let pdfDocument = null;
+let pdfLoadingTask = null;
+let pdfRenderTask = null;
+let pdfRenderGeneration = 0;
 let pdfPageNumber = 1;
 let pdfZoom = 1.15;
 let comicEntries = [];
@@ -178,7 +181,7 @@ const resetLocalLibrary = () => {
   audioPlayer.pause();
   audioPlayer.removeAttribute('src');
   releaseObjectUrls();
-  pdfDocument = null;
+  releasePdf();
   comicArchive = null;
   comicEntries = [];
   comicPage.removeAttribute('src');
@@ -192,24 +195,78 @@ const resetLocalLibrary = () => {
   mediaDetails.textContent = 'Open video, audio, PDF, EPUB, CBZ, or an installed game';
 };
 
+// The loading task owns the document and worker, including a load still in flight.
+const releasePdf = () => {
+  pdfRenderGeneration += 1;
+  pdfRenderTask?.cancel();
+  pdfRenderTask = null;
+  const task = pdfLoadingTask;
+  pdfLoadingTask = null;
+  pdfDocument = null;
+  if (task) void task.destroy().catch(() => {});
+};
+
 const renderPdfPage = async () => {
-  if (!pdfDocument) return;
-  const page = await pdfDocument.getPage(pdfPageNumber);
-  const viewport = page.getViewport({ scale: pdfZoom });
-  const context = pdfCanvas.getContext('2d', { alpha: false });
-  pdfCanvas.width = Math.ceil(viewport.width);
-  pdfCanvas.height = Math.ceil(viewport.height);
-  await page.render({ canvasContext: context, viewport }).promise;
-  pageStatus.textContent = `Page ${pdfPageNumber} of ${pdfDocument.numPages}`;
-  zoomStatus.textContent = `${Math.round(pdfZoom * 100)}%`;
-  previousPageButton.disabled = pdfPageNumber <= 1;
-  nextPageButton.disabled = pdfPageNumber >= pdfDocument.numPages;
+  const document = pdfDocument;
+  if (!document) return;
+  const generation = localLibraryGeneration;
+  const renderGeneration = ++pdfRenderGeneration;
+  const pageNumber = pdfPageNumber;
+  const zoom = pdfZoom;
+  const current = () => generation === localLibraryGeneration
+    && renderGeneration === pdfRenderGeneration && document === pdfDocument;
+  pdfRenderTask?.cancel();
+  pdfRenderTask = null;
+  let task;
+  try {
+    const page = await document.getPage(pageNumber);
+    if (!current()) return;
+    const viewport = page.getViewport({ scale: zoom });
+    // Render privately so a cancelled render cannot paint over its replacement.
+    const canvas = window.document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    task = page.render({ canvasContext: canvas.getContext('2d', { alpha: false }), viewport });
+    pdfRenderTask = task;
+    await task.promise;
+    if (!current()) return;
+    pdfCanvas.width = canvas.width;
+    pdfCanvas.height = canvas.height;
+    pdfCanvas.getContext('2d', { alpha: false }).drawImage(canvas, 0, 0);
+    pageStatus.textContent = `Page ${pageNumber} of ${document.numPages}`;
+    zoomStatus.textContent = `${Math.round(zoom * 100)}%`;
+    previousPageButton.disabled = pageNumber <= 1;
+    nextPageButton.disabled = pageNumber >= document.numPages;
+  } catch (error) {
+    if (current() && error.name !== 'RenderingCancelledException') throw error;
+  } finally {
+    if (task && pdfRenderTask === task) pdfRenderTask = null;
+  }
+};
+
+const navigatePdfPage = async () => {
+  const generation = localLibraryGeneration;
+  try {
+    await renderPdfPage();
+  } catch (error) {
+    if (generation === localLibraryGeneration && readerMode === 'pdf') {
+      mediaDetails.textContent = error.message || 'Could not open this PDF page.';
+    }
+  }
 };
 
 const openPdf = async (file) => {
+  const generation = localLibraryGeneration;
   const pdfjs = await import('../node_modules/pdfjs-dist/build/pdf.mjs');
+  if (generation !== localLibraryGeneration) return;
+  const data = new Uint8Array(await file.arrayBuffer());
+  if (generation !== localLibraryGeneration) return;
   pdfjs.GlobalWorkerOptions.workerSrc = new URL('../node_modules/pdfjs-dist/build/pdf.worker.mjs', window.location.href).href;
-  pdfDocument = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const task = pdfjs.getDocument({ data });
+  pdfLoadingTask = task;
+  const document = await task.promise;
+  if (generation !== localLibraryGeneration || pdfLoadingTask !== task) return;
+  pdfDocument = document;
   pdfPageNumber = 1;
   pdfZoom = 1.15;
   readerMode = 'pdf';
@@ -442,6 +499,7 @@ const navigateComicPage = async (direction) => {
 const openLocalFile = async (file) => {
   if (!file) return;
   localLibraryGeneration += 1;
+  releasePdf();
   const generation = localLibraryGeneration;
   comicArchive = null;
   comicEntries = [];
@@ -479,6 +537,7 @@ const openLocalFile = async (file) => {
     }
   } catch (error) {
     if (generation !== localLibraryGeneration) return;
+    releasePdf();
     hideLibraryViews();
     releaseObjectUrls();
     comicArchive = null;
@@ -502,6 +561,7 @@ const chooseInstalledGame = async () => {
     return;
   }
   localLibraryGeneration += 1;
+  releasePdf();
   comicArchive = null;
   comicEntries = [];
   comicPage.removeAttribute('src');
@@ -537,7 +597,7 @@ playerStage.addEventListener('drop', (event) => {
 previousPageButton.addEventListener('click', () => {
   if (readerMode === 'pdf' && pdfPageNumber > 1) {
     pdfPageNumber -= 1;
-    void renderPdfPage();
+    void navigatePdfPage();
   } else if (readerMode === 'comic' && comicPageNumber > 0) {
     void navigateComicPage(-1);
   } else if (readerMode === 'epub') {
@@ -548,7 +608,7 @@ previousPageButton.addEventListener('click', () => {
 nextPageButton.addEventListener('click', () => {
   if (readerMode === 'pdf' && pdfPageNumber < pdfDocument.numPages) {
     pdfPageNumber += 1;
-    void renderPdfPage();
+    void navigatePdfPage();
   } else if (readerMode === 'comic' && comicPageNumber < comicEntries.length - 1) {
     void navigateComicPage(1);
   } else if (readerMode === 'epub') {
@@ -559,13 +619,13 @@ nextPageButton.addEventListener('click', () => {
 zoomOutButton.addEventListener('click', () => {
   if (readerMode !== 'pdf') return;
   pdfZoom = Math.max(0.55, pdfZoom - 0.15);
-  void renderPdfPage();
+  void navigatePdfPage();
 });
 
 zoomInButton.addEventListener('click', () => {
   if (readerMode !== 'pdf') return;
   pdfZoom = Math.min(2.5, pdfZoom + 0.15);
-  void renderPdfPage();
+  void navigatePdfPage();
 });
 
 clearMediaButton.addEventListener('click', resetLocalLibrary);

@@ -13,6 +13,7 @@ const defaultSmokes = [
   'search-smoke.cjs',
   'watch-filters-smoke.cjs',
   'smoke-library.cjs',
+  'pdf-cancellation-smoke.cjs',
   'card-artwork-smoke.cjs'
 ];
 
