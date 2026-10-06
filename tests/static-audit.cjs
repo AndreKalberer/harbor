@@ -163,7 +163,7 @@ assert(!tvHtml.includes('allow-popups'), 'TV player grants popup permission.');
 assert(tvHtml.includes('id="tv-frame" class="player-frame focusable"') && tvHtml.includes('tabindex="0"'), 'TV player is not reachable with a 5-way remote.');
 assert(tvScript.includes('function focusPlayerFrame()') && tvScript.includes('tvFrame.contentWindow.focus()'), 'TV player does not hand remote focus to the embedded controls.');
 assert(tvScript.includes('function revealPlayerControls(route)') && tvScript.includes('if (route) revealPlayerControls(route);'), 'TV player controls stay covered while waiting for autoplay.');
-assert(tvScript.includes("playerEvent === 'play' || playerEvent === 'timeupdate'"), 'TV player hides its loading screen before playback is proven ready.');
+assert(tvScript.includes('playbackProvidersApi.vidLinkPlaybackEvidence(event.data, state.active, state.season, state.episode)'), 'TV player does not validate title-bound playback evidence.');
 assert(!tvScript.includes("event.data.type === 'MEDIA_DATA' ||"), 'TV player still treats catalog metadata as playback readiness.');
 assert(tvScript.includes('autoplay=true'), 'TV playback does not start immediately after an episode is selected.');
 assert(tvScript.includes('https://vidsrc.to/embed/'), 'TV playback has no secure fallback provider.');

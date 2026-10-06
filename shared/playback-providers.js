@@ -96,6 +96,30 @@
     return [provider.id, provider];
   }));
 
+  // VidLink's official event schema spells its TMDB field "mtmdbId".
+  // https://vidlink.pro/ (Player Events). Only a title-bound positive playback
+  // event is evidence; page loads, metadata and failed attempts remain unknown.
+  function vidLinkPlaybackEvidence(payload, target, season, episode) {
+    function integer(value, allowZero) {
+      return (typeof value === 'string' || typeof value === 'number')
+        && (allowZero ? /^(0|[1-9]\d*)$/ : /^[1-9]\d*$/).test(String(value))
+        && Number.isSafeInteger(Number(value));
+    }
+    if (!target || !integer(target.tmdbId, false) || !payload || payload.type !== 'PLAYER_EVENT') return false;
+    var data = payload.data;
+    var mediaType = target.type === 'movie' ? 'movie' : (target.type === 'tv' || target.type === 'anime') ? 'tv' : '';
+    if (!data || !mediaType || data.mediaType !== mediaType || !integer(data.mtmdbId, false)
+      || String(data.mtmdbId) !== String(target.tmdbId)) return false;
+    if (mediaType === 'tv' && (!integer(season, true) || !integer(episode, false)
+      || !integer(data.season, true) || !integer(data.episode, false)
+      || String(data.season) !== String(season) || String(data.episode) !== String(episode))) return false;
+    return (data.event === 'play' || data.event === 'timeupdate')
+      && typeof data.currentTime === 'number' && Number.isFinite(data.currentTime)
+      && typeof data.duration === 'number' && Number.isFinite(data.duration)
+      && data.duration > 0 && data.currentTime >= 0 && data.currentTime <= data.duration
+      && (data.event !== 'timeupdate' || data.currentTime > 0);
+  }
+
   function resolve(providerId, tmdbId, isSeries, season, episode) {
     var provider = providerById[providerId] || providerById.vidlink;
     var template = isSeries ? provider.seriesTemplate : provider.movieTemplate;
@@ -110,6 +134,7 @@
     allowedHosts: Object.freeze([...new Set(providers.flatMap(function (provider) {
       return [provider.host, ...(provider.navigationHosts || [])];
     }))]),
+    vidLinkPlaybackEvidence: vidLinkPlaybackEvidence,
     resolve: resolve
   });
 });
