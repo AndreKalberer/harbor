@@ -408,14 +408,16 @@ const TMDB_BASE = 'https://api.themoviedb.org/3';
 const seriesMetadataApi = window.HarborSeriesMetadata;
 const allMovieFilter = { id: 'all-movies', label: 'All movies', source: 'provider-catalog', mediaType: 'movie' };
 const sharedWatchBrowseApi = window.HarborWatchBrowse;
+const animeCatalogApi = window.HarborAnimeCatalog;
 const watchBrowseApi = {
   ...sharedWatchBrowseApi,
   getFilters: section => section === 'Movies'
     ? [allMovieFilter, ...sharedWatchBrowseApi.getFilters(section)]
-    : sharedWatchBrowseApi.getFilters(section),
+    : section === 'Anime' && !TMDB_API_KEY ? animeCatalogApi.filters() : sharedWatchBrowseApi.getFilters(section),
   getFilter: (section, id) => section === 'Movies' && (!id || id === 'all-movies')
-    ? allMovieFilter : sharedWatchBrowseApi.getFilter(section, id),
-  defaultFilterId: section => section === 'Movies' ? 'all-movies' : sharedWatchBrowseApi.defaultFilterId(section)
+    ? allMovieFilter : section === 'Anime' && !TMDB_API_KEY
+      ? animeCatalogApi.filters().find(filter => filter.id === id) || animeCatalogApi.filters()[0] : sharedWatchBrowseApi.getFilter(section, id),
+  defaultFilterId: section => section === 'Movies' ? 'all-movies' : section === 'Anime' && !TMDB_API_KEY ? 'library' : sharedWatchBrowseApi.defaultFilterId(section)
 };
 
 // Massive Comprehensive Master Media Database (120+ Titles across Watch, Read, Listen, Play)
@@ -441,7 +443,9 @@ streamServerSelect.replaceChildren(...playbackProvidersApi.providers.map((provid
   return option;
 }));
 
-const WATCH_CATALOG = EXPANDED_MASTER_CATALOG.filter((item) => item.category === 'Watch');
+const BUILTIN_WATCH_CATALOG = EXPANDED_MASTER_CATALOG.filter((item) => item.category === 'Watch');
+const NO_KEY_ANIME_CATALOG = !TMDB_API_KEY ? animeCatalogApi.items(BUILTIN_WATCH_CATALOG, 'desktop') : [];
+const WATCH_CATALOG = BUILTIN_WATCH_CATALOG;
 let directoryLinkCatalog = [];
 let activeCategory = 'Home';
 let activeSubcategory = 'All';
@@ -491,7 +495,7 @@ let liveStreamIndex = 0;
 let liveStreamRecoveryAttempts = 0;
 let liveGuideGeneration = 0;
 const catalogTotals = {
-  Watch: { All: null, Movies: null, 'TV Shows': null, Anime: null, Sports: null, 'Live TV': 'Live' },
+  Watch: { All: null, Movies: null, 'TV Shows': null, Anime: !TMDB_API_KEY ? NO_KEY_ANIME_CATALOG.length : null, Sports: null, 'Live TV': 'Live' },
   Listen: { All: 0, Music: 0 },
   Read: { All: 0, Comics: 0, Manga: 0, 'eBooks & Audiobooks': 0 },
   Play: { All: 0, Games: 0 }
@@ -789,6 +793,9 @@ const isCurrentSearchRequest = (term, sequence, scope) => (
 );
 
 const localSearchResults = (term, scope = getSearchScope()) => {
+  if (scope.category === 'Watch' && scope.subcategory === 'Anime' && !TMDB_API_KEY) {
+    return animeCatalogApi.page(NO_KEY_ANIME_CATALOG.filter(item => itemMatchesSearchScope(item, scope)), scope.watchFilter, 1, term).items;
+  }
   if (scope.category === 'Watch' && scope.subcategory === 'TV Shows' && !TMDB_API_KEY) {
     return rankSearchResults([...loadedProviderShows.values(), ...WATCH_CATALOG]
       .filter(item => itemMatchesSearchScope(item, scope)), term);
@@ -970,7 +977,12 @@ const loadActiveWatchBrowse = async ({ append = false, requestedPage = 1 } = {})
   try {
     let items = [];
     let canLoadMore = false;
-    if (filter.source === 'iptv' || filter.source === 'free-events') {
+    if (filter.source === 'anime-metadata') {
+      const result = animeCatalogApi.page(NO_KEY_ANIME_CATALOG, filter.id, page, query.trim());
+      items = result.items;
+      canLoadMore = result.canLoadMore;
+      catalogTotals.Watch.Anime = NO_KEY_ANIME_CATALOG.length;
+    } else if (filter.source === 'iptv' || filter.source === 'free-events') {
       const directory = await watchBrowseApi.loadLiveWindowDirectory(activeSubcategory, activeWatchFilter, {
         limit: 240,
         country: activeLiveCountry,
@@ -1012,7 +1024,7 @@ const loadActiveWatchBrowse = async ({ append = false, requestedPage = 1 } = {})
       ? [...watchBrowseItems, ...items.filter((item) => !watchBrowseItems.some((existing) => watchBrowseItemKey(existing) === watchBrowseItemKey(item)))]
       : items;
     watchBrowsePage = page;
-    watchBrowseCanLoadMore = (filter.source === 'tmdb' || filter.source === 'provider-shows' || activeSubcategory === 'Movies') && canLoadMore;
+    watchBrowseCanLoadMore = (filter.source === 'tmdb' || filter.source === 'provider-shows' || filter.source === 'anime-metadata' || activeSubcategory === 'Movies') && canLoadMore;
     watchBrowseLoading = false;
     watchBrowseLoaded = true;
     if ((filter.source === 'iptv' || filter.source === 'free-events') && query.trim()) {
@@ -1219,7 +1231,7 @@ const applyCatalogTotalValues = (values) => {
 
   setNumber('Watch', 'Movies', 'movies');
   setNumber('Watch', 'TV Shows', 'shows');
-  setNumber('Watch', 'Anime', 'anime');
+  if (TMDB_API_KEY) setNumber('Watch', 'Anime', 'anime');
   setNumber('Watch', 'Sports', 'sports');
   if (typeof catalogTotals.Watch.Movies === 'number' && typeof catalogTotals.Watch['TV Shows'] === 'number') {
     catalogTotals.Watch.All = catalogTotals.Watch.Movies + catalogTotals.Watch['TV Shows'];
@@ -1236,6 +1248,7 @@ const loadCachedCatalogTotals = () => {
       if (section !== 'Watch') return;
       if (!catalogTotals[section] || !values) return;
       Object.entries(values).forEach(([subcategory, value]) => {
+        if (!TMDB_API_KEY && subcategory === 'Anime') return;
         if (value !== null && catalogTotals[section][subcategory] !== undefined) {
           catalogTotals[section][subcategory] = value;
         }
@@ -1333,6 +1346,13 @@ const applySearchBatch = (term, sequence, scope, localResults, batches, totals, 
 const searchGlobalMedia = async (term, sequence, scope, page = 1, append = false) => {
   const normalizedTerm = normalizeSearchText(term);
   if (normalizedTerm.length < 2 || !isCurrentSearchRequest(term, sequence, scope)) return;
+  if (scope.category === 'Watch' && scope.subcategory === 'Anime' && !TMDB_API_KEY) {
+    const result = animeCatalogApi.page(NO_KEY_ANIME_CATALOG, scope.watchFilter, page, term);
+    currentMediaList = append ? [...currentMediaList, ...result.items.filter(item => !currentMediaList.some(existing => animeCatalogApi.identity(existing) === animeCatalogApi.identity(item)))] : result.items;
+    searchState = { term: normalizedTerm, loading: false, total: result.total, page, canLoadMore: result.canLoadMore, partial: false };
+    renderResources();
+    return;
+  }
   if (scope.category === 'Watch' && ['Movies', 'TV Shows', 'Anime'].includes(scope.subcategory) && !TMDB_API_KEY) {
     currentMediaList = localSearchResults(term, scope);
     searchState = { term: normalizedTerm, loading: false, total: currentMediaList.length, page: 1, canLoadMore: false, partial: false };
@@ -2203,6 +2223,12 @@ const loadLiveGuide = async (item) => {
   detailGuideWeekEmpty.hidden = groups.laterThisWeek.length > 0;
 };
 
+const watchMetadataText = (item, sections = item.sections || []) => [
+  item.year || '',
+  Number(item.rating) > 0 ? '★ ' + item.rating : '',
+  ...sections
+].filter(Boolean).join(' · ');
+
 // Media Detail Dialog (Episodes, live guide, and sources)
 const openDetailDialog = async (item) => {
   activeMedia = item;
@@ -2218,7 +2244,7 @@ const openDetailDialog = async (item) => {
   detailTitle.textContent = item.name;
   detailSubtitle.textContent = isLive
     ? [item.year || 'Live', item.countryFlag, item.countryName, ...(item.languageNames || []), item.streamCandidates?.[0]?.quality].filter(Boolean).join(' · ')
-    : item.year + ' · ★ ' + item.rating + ' · ' + (item.sections || []).join(', ');
+    : watchMetadataText(item);
   detailOverview.textContent = item.overview;
   syncSaveButton(detailSaveBtn, item);
   detailPlayBtn.hidden = isSeries;
@@ -2382,7 +2408,7 @@ const buildCard = (item) => {
         ? (item.domain || 'Website') + ' · ' + (item.sections || []).slice(0, 2).join(' · ')
         : (item.type === 'live'
           ? 'Live · ' + (item.sections || []).slice(0, 2).join(' · ')
-          : item.year + ' · ★ ' + item.rating + ' · ' + (item.sections || []).slice(0, 2).join(' · '))
+          : watchMetadataText(item, (item.sections || []).slice(0, 2)))
     )
   );
   openButton.append(art, copy);
@@ -2808,7 +2834,7 @@ const renderResources = () => {
       ? (heroMedia.domain || 'Website') + ' · YarrList'
       : (heroMedia.type === 'live'
         ? 'Live · ' + (heroMedia.sections || []).slice(0, 2).join(' · ')
-        : heroMedia.year + ' · ' + (heroMedia.sections || []).slice(0, 2).join(' · '));
+        : [heroMedia.year, ...(heroMedia.sections || []).slice(0, 2)].filter(Boolean).join(' · '));
     heroFeature.setAttribute('aria-label', 'Open featured title ' + heroMedia.name);
   }
   syncSaveButton(heroLibraryButton, heroMedia);

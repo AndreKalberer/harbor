@@ -93,8 +93,17 @@ const run = async () => {
       await delay(100);
     }
     if (Date.now() >= deadline) throw new Error(`Timed out waiting for Harbor TV.\n${output.join('')}`);
-    await runCapture(port);
-    await runCapture(port, path.join(__dirname, 'anime-films-smoke.cjs'));
+    const requested = process.argv.slice(2);
+    if (requested.length) {
+      for (const smoke of requested) {
+        if (!['capture-tv.cjs', 'anime-films-smoke.cjs', 'anime-catalog-smoke.cjs'].includes(smoke)) throw new Error('Unknown TV smoke test.');
+        await runCapture(port, path.join(__dirname, smoke));
+      }
+    } else {
+      await runCapture(port);
+      await runCapture(port, path.join(__dirname, 'anime-films-smoke.cjs'));
+      await runCapture(port, path.join(__dirname, 'anime-catalog-smoke.cjs'));
+    }
   } finally {
     await stopProcess(harbor);
     removeProfileDirectory(profileDirectory);

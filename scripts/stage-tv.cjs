@@ -72,7 +72,7 @@ const run = async () => {
     .replace('../node_modules/hls.js/dist/hls.min.js', 'shared/hls.min.js');
   fs.writeFileSync(path.join(androidAssets, 'index.html'), bundledTvHtml);
   for (const file of ['config.js', 'tv.css', 'tv.js']) fs.copyFileSync(path.join(tvRoot, file), path.join(androidAssets, file));
-  for (const file of ['series-metadata.js', 'live-tv.js', 'watch-browse.js']) fs.copyFileSync(path.join(root, 'shared', file), path.join(androidAssets, 'shared', file));
+  for (const file of ['series-metadata.js', 'live-tv.js', 'anime-metadata.js', 'anime-catalog.js', 'watch-browse.js']) fs.copyFileSync(path.join(root, 'shared', file), path.join(androidAssets, 'shared', file));
   fs.copyFileSync(path.join(root, 'node_modules', 'hls.js', 'dist', 'hls.min.js'), path.join(androidAssets, 'shared', 'hls.min.js'));
   fs.copyFileSync(path.join(root, 'assets', 'harbor-mark.svg'), path.join(androidAssets, 'assets', 'harbor-mark.svg'));
   fs.copyFileSync(icon, path.join(androidAssets, 'assets', 'icon.png'));
@@ -84,6 +84,8 @@ const run = async () => {
   const seriesMetadataSource = fs.readFileSync(path.join(root, 'shared', 'series-metadata.js'), 'utf8');
   const liveTvSource = fs.readFileSync(path.join(root, 'shared', 'live-tv.js'), 'utf8');
   const watchBrowseSource = fs.readFileSync(path.join(root, 'shared', 'watch-browse.js'), 'utf8');
+  const animeMetadataSource = fs.readFileSync(path.join(root, 'shared', 'anime-metadata.js'), 'utf8');
+  const animeCatalogSource = fs.readFileSync(path.join(root, 'shared', 'anime-catalog.js'), 'utf8');
   const hlsSource = fs.readFileSync(path.join(root, 'node_modules', 'hls.js', 'dist', 'hls.min.js'), 'utf8');
   const tvConfigSource = stagedApiKey
     ? `window.HARBOR_CONFIG = Object.freeze({\n  tmdbApiKey: ${JSON.stringify(stagedApiKey)}\n});\n`
@@ -97,6 +99,8 @@ const run = async () => {
     .replaceAll('src="../assets/harbor-mark.svg"', `src="${logoData}"`)
     .replace('<script src="../shared/series-metadata.js"></script>', `<script nonce="${lgNonce}">${inlineScript(seriesMetadataSource)}</script>`)
     .replace('<script src="../shared/live-tv.js"></script>', `<script nonce="${lgNonce}">${inlineScript(liveTvSource)}</script>`)
+    .replace('<script src="../shared/anime-metadata.js"></script>', () => `<script nonce="${lgNonce}">${inlineScript(animeMetadataSource)}</script>`)
+    .replace('<script src="../shared/anime-catalog.js"></script>', () => `<script nonce="${lgNonce}">${inlineScript(animeCatalogSource)}</script>`)
     .replace('<script src="../shared/watch-browse.js"></script>', `<script nonce="${lgNonce}">${inlineScript(watchBrowseSource)}</script>`)
     .replace('<script src="config.js"></script>', `<script nonce="${lgNonce}">${inlineScript(tvConfigSource)}</script>`)
     .replace('<script src="../node_modules/hls.js/dist/hls.min.js"></script>', `<script nonce="${lgNonce}">${inlineScript(hlsSource)}</script>`)

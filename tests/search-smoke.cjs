@@ -82,7 +82,7 @@ const run = async () => {
     return result;
   })()`);
   const expectedBadges = {
-    Watch: { All: '1.4M', Movies: '1.2M', 'TV Shows': '230K', Anime: '11.4K', Sports: '485', 'Live TV': '' },
+    Watch: { All: '1.4M', Movies: '1.2M', 'TV Shows': '230K', Anime: await evaluate(`TMDB_API_KEY ? '11.4K' : formatCatalogTotal(NO_KEY_ANIME_CATALOG.length)`), Sports: '485', 'Live TV': '' },
     Listen: { All: '12', Music: '12' },
     Read: { All: '24', Comics: '5', Manga: '10', 'eBooks & Audiobooks': '9' },
     Play: { All: '8', Games: '8' }

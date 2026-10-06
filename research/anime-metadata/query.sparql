@@ -1,0 +1,19 @@
+SELECT ?item ?class ?kind ?tmdb ?en ?ja
+ (GROUP_CONCAT(DISTINCT ?language; separator="|") AS ?languages)
+ (GROUP_CONCAT(DISTINCT ?title; separator="|") AS ?titles)
+ (GROUP_CONCAT(DISTINCT ?date; separator="|") AS ?dates)
+WHERE {
+ VALUES (?class ?property ?kind) {
+  (wd:Q63952888 wdt:P4983 "tv")
+  (wd:Q20650540 wdt:P4947 "movie")
+ }
+ ?item wdt:P31 ?class; ?property ?tmdb.
+ OPTIONAL { ?item rdfs:label ?en FILTER(LANG(?en)="en") }
+ OPTIONAL { ?item rdfs:label ?ja FILTER(LANG(?ja)="ja") }
+ OPTIONAL { ?item wdt:P364 ?language }
+ OPTIONAL { ?item wdt:P1476 ?title FILTER(LANG(?title)="ja") }
+ OPTIONAL { ?item wdt:P577|wdt:P580 ?date }
+}
+GROUP BY ?item ?class ?kind ?tmdb ?en ?ja
+ORDER BY ?item
+LIMIT 5000
