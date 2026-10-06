@@ -187,7 +187,7 @@ const run = async () => {
     await new Promise((resolve) => setTimeout(resolve, 2500));
     const names = [...document.querySelectorAll('#card-grid .media-card h3')].map((node) => node.textContent.trim());
     const imageCount = document.querySelectorAll('#card-grid .media-card img').length;
-    document.querySelector('#card-grid .media-card').click();
+    [...document.querySelectorAll('#card-grid .media-card')].find(card=>card.querySelector('h3')?.textContent==='Bleach').click();
     const started = Date.now();
     while (document.querySelectorAll('#season-select option').length < 2 && Date.now() - started < 10000) {
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -200,11 +200,23 @@ const run = async () => {
     select.value = '2';
     select.dispatchEvent(new Event('change', { bubbles: true }));
     const tybwEpisodes = document.querySelectorAll('#episode-grid .episode-button').length;
+    document.querySelector('#detail-save').click();
+    const savedSeries = JSON.parse(localStorage.getItem('harbor:tv-state:v1')).saved.find(item=>item.name==='Bleach');
+    document.querySelector('#detail-panel').hidden = true;
+    const filmCard = [...document.querySelectorAll('#card-grid .media-card')].find(card=>card.querySelector('h3')?.textContent==='Bleach: Memories of Nobody');
+    filmCard.click();
+    const filmControls = {playVisible:!document.querySelector('#detail-play').hidden,episodesHidden:document.querySelector('#episode-browser').hidden};
+    document.querySelector('#detail-save').click();
+    const savedFilm = JSON.parse(localStorage.getItem('harbor:tv-state:v1')).saved.find(item=>item.name==='Bleach: Memories of Nobody');
     document.querySelector('#detail-panel').hidden = true;
     document.querySelector('[data-action="watch"]').click();
-    return { names, imageCount, options, seriesPlayHidden, focusOnEpisode, originalEpisodes, tybwEpisodes };
+    return { names, imageCount, options, seriesPlayHidden, focusOnEpisode, originalEpisodes, tybwEpisodes, savedSeries, savedFilm, filmControls };
   })()`);
-  if (bleach.names.length !== 1 || bleach.names[0] !== 'Bleach' || bleach.imageCount !== 1
+  if (!bleach.names.includes('Bleach') || new Set(bleach.names).size !== bleach.names.length || bleach.imageCount !== 1
+      || bleach.names.join('|') !== 'Bleach|Bleach: Fade to Black|Bleach: Hell Verse|Bleach: Memories of Nobody|Bleach: The DiamondDust Rebellion'
+      || bleach.savedSeries.id !== 'anime-30984' || bleach.savedSeries.type !== 'anime'
+      || bleach.savedFilm.type !== 'movie' || !bleach.savedFilm.id.startsWith('movie-')
+      || !bleach.filmControls.playVisible || !bleach.filmControls.episodesHidden
       || bleach.options[0] !== 'Bleach · 366 episodes'
       || bleach.options[1] !== 'Thousand-Year Blood War · 50 episodes'
       || !bleach.seriesPlayHidden || !bleach.focusOnEpisode

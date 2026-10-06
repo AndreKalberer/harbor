@@ -5,6 +5,15 @@
   var TMDB_IMAGE = 'https://image.tmdb.org/t/p/w780';
   var seriesMetadataApi = window.HarborSeriesMetadata;
   var watchBrowseApi = window.HarborWatchBrowse;
+  var animeCatalogApi = window.HarborAnimeCatalog;
+  if (!TMDB_KEY) {
+    var originalWatchBrowse = watchBrowseApi;
+    watchBrowseApi = Object.assign(Object.create(originalWatchBrowse), {
+      getFilters: function(section) { return section === 'Anime' ? animeCatalogApi.filters() : originalWatchBrowse.getFilters(section); },
+      getFilter: function(section,id) { return section === 'Anime' ? animeCatalogApi.filters().filter(function(filter){return filter.id===id;})[0] || animeCatalogApi.filters()[0] : originalWatchBrowse.getFilter(section,id); },
+      defaultFilterId: function(section) { return section === 'Anime' ? 'library' : originalWatchBrowse.defaultFilterId(section); }
+    });
+  }
   var STATE_KEY = 'harbor:tv-state:v1';
   var sections = {
     Home: ['Overview', 'Continue', 'My List'],
@@ -334,6 +343,14 @@
       });
     }
     var seriesFilter = watchBrowseApi.getFilter(state.subcategory, state.watchFilter);
+    if (!TMDB_KEY && state.subcategory === 'Anime') {
+      var catalog = fallbackWatch.filter(function(item){return item.type==='anime'||item.section==='Anime';}).concat(animeCatalogApi.items(fallbackWatch,'tv'));
+      var animePage = animeCatalogApi.page(catalog, seriesFilter.id, page, query);
+      var animeItems = animePage.items;
+      animeItems.catalogCanLoadMore = animePage.canLoadMore;
+      animeItems.catalogTotal = animePage.total;
+      return Promise.resolve(animeItems);
+    }
     if (state.subcategory === 'TV Shows' && seriesFilter && seriesFilter.source === 'provider-shows' && !query) {
       return watchBrowseApi.loadProviderShows(page, requestJson).then(function (result) {
         var items = result.items.map(function (item) {
@@ -596,7 +613,9 @@
       ? '<div class="empty-state"><h3>Your Harbor is ready</h3><p>Save a title or start watching to build your personal home.</p></div>'
       : '<div class="empty-state"><h3>No titles found</h3><p>Try a different search or category.</p></div>';
     var isLive = state.subcategory === 'Sports' || state.subcategory === 'Live TV';
-    resultCount.textContent = !TMDB_KEY && state.subcategory === 'TV Shows' && state.query
+    resultCount.textContent = !TMDB_KEY && state.subcategory === 'Anime'
+      ? state.items.length + ' of ' + (state.animeTotal || state.items.length) + (state.query ? ' matches' : ' catalog titles')
+      : !TMDB_KEY && state.subcategory === 'TV Shows' && state.query
       ? state.items.length + ' matches in loaded TV shows' : isLive
       ? state.liveWindow === 'soon'
         ? state.items.length + ' upcoming listings'
@@ -616,6 +635,7 @@
     rowTitle.textContent = state.query ? 'Results for “' + state.query + '”' : state.section === 'Home' ? (state.subcategory === 'Overview' ? 'Continue & My List' : state.subcategory) : (state.subcategory === 'Sports' || state.subcategory === 'Live TV') ? (state.liveWindow === 'soon' ? 'Live Soon' : 'Live Now') : browseFilter ? browseFilter.label + ' ' + state.subcategory : 'Browse ' + state.subcategory;
     return fetchCurrent(state.query, state.page).then(function (items) {
       if (generation !== itemLoadGeneration) return;
+      if (state.subcategory === 'Anime' && !TMDB_KEY) state.animeTotal = Number(items.catalogTotal) || 0;
       var next = items.filter(function (item) { return item && item.name; });
       state.items = append ? state.items.concat(next.filter(function (item) { return !state.items.some(function (existing) { return existing.id === item.id; }); })) : next;
       state.canLoadMore = typeof items.catalogCanLoadMore === 'boolean' ? items.catalogCanLoadMore : next.length >= 20 && !['Play', 'Sports', 'Live TV', 'My List', 'Continue'].includes(state.subcategory);

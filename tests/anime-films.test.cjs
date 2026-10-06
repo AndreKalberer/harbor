@@ -53,6 +53,7 @@ for (const item of [desktopFilm, regularSeries, desktopSeries]) {
 
 (async () => {
   const noKey = vm.createContext({
+    animeCatalogApi: require('../shared/anime-catalog.js'), NO_KEY_ANIME_CATALOG: [desktopSeries],
     TMDB_API_KEY: '', normalizeSearchText: value => value.toLowerCase(),
     isCurrentSearchRequest: () => true, localSearchResults: () => [desktopSeries], renderResources: () => {},
     currentMediaList: [], searchState: {}, fetchSearchJson: () => { throw new Error('No-key Anime search must remain local'); }

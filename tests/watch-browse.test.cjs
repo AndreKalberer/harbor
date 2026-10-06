@@ -1,6 +1,8 @@
 const assert = require('node:assert/strict');
 const watchBrowse = require('../shared/watch-browse');
 require('./anime-films.test.cjs');
+require('./anime-catalog.test.cjs');
+require('./anime-metadata-source.test.cjs');
 
 for (const section of ['Movies', 'TV Shows', 'Anime', 'Sports', 'Live TV']) {
   assert.ok(watchBrowse.getFilters(section).length >= 8, section + ' should expose a useful set of filters');
