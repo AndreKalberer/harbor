@@ -54,6 +54,7 @@
   var state = { section: 'Watch', subcategory: 'All', watchFilter: '', liveCountry: '', liveLanguage: '', liveWindow: 'now', liveFacets: { countries: [], languages: [], sports: [] }, liveTotal: 0, liveCached: false, page: 1, items: [], active: null, saved: [], history: [], query: '', canLoadMore: false, loading: false, seasons: [], season: 1, episode: 1, episodePage: 0, playerRoutes: [], playerRouteIndex: 0, playerMode: '' };
   var seriesMetadataCache = {};
   var itemLoadGeneration = 0;
+  var playbackProvidersApi = window.HarborPlaybackProviders;
   var playerReady = false;
   var EPISODE_PAGE_SIZE = 30;
   var playerRouteTimer = null;
@@ -857,6 +858,10 @@
   }
 
   function revealPlayerControls(route) {
+    // A loaded frame can need a Play click. Keep it usable without treating a
+    // page load as playback or switching servers while the user interacts.
+    clearTimeout(playerRouteTimer);
+    playerRouteTimer = null;
     clearTimeout(playerControlTimer);
     playerControlTimer = setTimeout(function () {
       if (playerPanel.hidden || tvFrame.hidden || state.playerRoutes[state.playerRouteIndex] !== route) return;
@@ -1238,12 +1243,7 @@
       markPlayerReady();
       return;
     }
-    if (state.playerMode === 'embed' && route && route.provider !== 'vidlink') {
-      clearTimeout(playerReadyTimer);
-      playerReadyTimer = setTimeout(function () {
-        if (!playerPanel.hidden && !playerReady && state.playerRoutes[state.playerRouteIndex] === route) markPlayerReady();
-      }, 1200);
-    }
+
   });
   tvFrame.addEventListener('focus', function () {
     try {
@@ -1251,9 +1251,13 @@
     } catch (_) {}
   });
   window.addEventListener('message', function (event) {
-    if (event.origin !== 'https://vidlink.pro' || event.source !== tvFrame.contentWindow || playerPanel.hidden || !event.data) return;
-    var playerEvent = event.data.type === 'PLAYER_EVENT' && event.data.data && event.data.data.event;
-    if (playerEvent === 'play' || playerEvent === 'timeupdate') markPlayerReady();
+    var route = state.playerRoutes[state.playerRouteIndex];
+    if (event.origin !== 'https://vidlink.pro' || event.source !== tvFrame.contentWindow
+      || playerPanel.hidden || tvFrame.hidden || state.playerMode !== 'embed'
+      || !route || route.provider !== 'vidlink' || tvFrame.src !== route.url || !state.active
+      || route.url.split('?')[0] !== playbackProvidersApi.resolve('vidlink', state.active.tmdbId,
+        state.active.type === 'tv' || state.active.type === 'anime', state.season, state.episode)) return;
+    if (playbackProvidersApi.vidLinkPlaybackEvidence(event.data, state.active, state.season, state.episode)) markPlayerReady();
   });
   tvVideo.addEventListener('canplay', function () { markPlayerReady(); });
   tvAudio.addEventListener('canplay', function () { if (activeAudio()) markPlayerReady(); });
