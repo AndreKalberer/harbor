@@ -80,4 +80,10 @@ assert.throws(() => userState.parseBackup('{bad json'));
 assert.throws(() => userState.parseBackup({ unrelated: true }), /not a Harbor data backup/);
 assert.throws(() => userState.parseBackup({ format: 'harbor-user-data', version: 99, state: {} }), /not supported/);
 
+const metadataMovie = { id: 'vidsrc-movie-496243', tmdbId: '496243', name: '기생충', category: 'Watch', type: 'movie', movieDiscoveryMetadata: true };
+assert.equal(userState.normalize({ favorites: [metadataMovie] }).favorites[0].movieDiscoveryMetadata, true);
+for (const changes of [{ movieDiscoveryMetadata: 'true' }, { type: 'tv' }, { category: 'Listen' }, { movieDiscoveryMetadata: false }]) {
+  assert.equal(Object.hasOwn(userState.normalize({ favorites: [{ ...metadataMovie, ...changes }] }).favorites[0], 'movieDiscoveryMetadata'), false);
+}
+assert.equal(Object.hasOwn(userState.normalize({ favorites: [{ ...metadataMovie, movieDiscoveryMetadata: undefined }] }).favorites[0], 'movieDiscoveryMetadata'), false);
 process.stdout.write('User-state migration and recovery verified.\n');

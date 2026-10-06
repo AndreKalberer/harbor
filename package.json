@@ -1,6 +1,6 @@
 {
   "name": "harbor-desktop",
-  "version": "2.3.9",
+  "version": "2.3.10",
   "description": "A consumer entertainment hub for watching, listening, reading, and playing.",
   "desktopName": "com.harbor.desktop",
   "main": "electron/main.cjs",
@@ -16,7 +16,7 @@
     "start": "electron .",
     "icon:render": "electron scripts/render-icon.cjs",
     "tv:icon": "electron scripts/render-tv-icon.cjs",
-    "test": "npm run test:static && node tests/vidsrc-catalog.test.cjs && node tests/provider-shows.test.cjs && node tests/player-readiness.test.cjs && node tests/prune-old-downloads.test.cjs",
+    "test": "npm run test:static && node tests/vidsrc-catalog.test.cjs && node tests/provider-shows.test.cjs && node tests/movie-discovery.test.cjs && node tests/player-readiness.test.cjs && node tests/prune-old-downloads.test.cjs",
     "test:consumer": "npm test && npm run test:desktop-smoke && npm run test:player",
     "test:provider-shows:ui": "node tests/run-desktop-smoke.cjs provider-shows-smoke.cjs",
     "test:player": "node tests/run-player-smoke.cjs",
@@ -47,6 +47,7 @@
     "appId": "com.harbor.desktop",
     "productName": "Harbor",
     "asar": true,
+    "asarUnpack": ["electron/movie-discovery-worker.cjs"],
     "publish": {
       "provider": "github",
       "owner": "AndreKalberer",

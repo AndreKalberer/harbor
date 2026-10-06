@@ -13,6 +13,7 @@ const defaultSmokes = [
   'search-smoke.cjs',
   'watch-filters-smoke.cjs',
   'provider-shows-smoke.cjs',
+  'movie-discovery-smoke.cjs',
   'anime-films-smoke.cjs',
   'smoke-library.cjs',
   'card-artwork-smoke.cjs'
@@ -113,7 +114,7 @@ const runSmoke = async (smokeName) => {
   }
 
   const port = await reservePort();
-  const mainPort = smokeName === 'provider-shows-smoke.cjs' ? await reservePort() : 0;
+  const mainPort = ['provider-shows-smoke.cjs', 'movie-discovery-smoke.cjs'].includes(smokeName) ? await reservePort() : 0;
   const profileDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'harbor-desktop-smoke-'));
   const output = [];
   if (packagedExecutable && !fs.existsSync(packagedExecutable)) {

@@ -528,6 +528,7 @@ const mediaSnapshot = (item) => ({
   name: item.name,
   category: item.category,
   type: item.type,
+  ...(item.category === 'Watch' && item.type === 'movie' && item.movieDiscoveryMetadata === true ? { movieDiscoveryMetadata: true } : {}),
   year: item.year,
   rating: item.rating,
   sections: [...(item.sections || [])],
@@ -753,6 +754,32 @@ const rankSearchResults = (items, term) => {
     .map((entry) => entry.item);
 };
 
+// Movie-only fallback keeps original-language names searchable without changing other scopes.
+const normalizeMovieSearchText = value => String(value || '').normalize('NFKD').replace(/\p{M}/gu, '')
+  .toLocaleLowerCase('en-US').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const normalizeScopedSearchTerm = (term, scope = getSearchScope()) => (
+  scope.category === 'Watch' && scope.subcategory === 'Movies' && !TMDB_API_KEY
+    ? normalizeMovieSearchText(term) : normalizeSearchText(term)
+);
+const hasActiveSearchTerm = () => Boolean(normalizeScopedSearchTerm(query));
+const localMovieSearchResults = (items, term) => {
+  if (typeof term !== 'string' || term.length > 200) return [];
+  const key = normalizeMovieSearchText(term);
+  if (!key) return [];
+  const exactId = /^(?:tmdb:)?([1-9]\d*)$/.exec(term.trim());
+  const matches = new Map();
+  items.forEach((item, index) => {
+    const title = normalizeMovieSearchText(String(item.name || '').slice(0, 1000));
+    const score = exactId ? (String(item.tmdbId || '') === exactId[1] ? 1000 : 0)
+      : Math.max(searchScore(item, term), title === key ? 1000 : title.startsWith(key) ? 500 : title.includes(key) ? 250 : 0);
+    if (!score) return;
+    const identity = item.tmdbId ? 'movie:' + item.tmdbId : mediaKey(item);
+    const existing = matches.get(identity);
+    if (!existing || score > existing.score) matches.set(identity, { item, score, index });
+  });
+  return [...matches.values()].sort((a, b) => b.score - a.score || a.index - b.index).map(entry => entry.item);
+};
+
 const getSearchScope = () => ({
   category: activeCategory,
   subcategory: activeCategory === 'Home' ? 'All' : activeSubcategory,
@@ -778,7 +805,7 @@ const itemMatchesSearchScope = (item, scope = getSearchScope()) => {
 };
 
 const getSearchCacheKey = (term, scope = getSearchScope()) => [
-  normalizeSearchText(term),
+  normalizeScopedSearchTerm(term, scope),
   scope.category,
   scope.subcategory,
   scope.watchFilter || ''
@@ -794,7 +821,7 @@ const localSearchResults = (term, scope = getSearchScope()) => {
       .filter(item => itemMatchesSearchScope(item, scope)), term);
   }
   if (scope.category === 'Watch' && scope.subcategory === 'Movies' && !TMDB_API_KEY) {
-    return rankSearchResults([...loadedProviderMovies.values(), ...WATCH_CATALOG]
+    return localMovieSearchResults([...loadedProviderMovies.values(), ...WATCH_CATALOG, ...userState.favorites]
       .filter(item => itemMatchesSearchScope(item, scope)), term);
   }
   const source = scope.category === 'Watch' && scope.subcategory !== 'All' && watchBrowseLoaded
@@ -1182,7 +1209,7 @@ const loadDirectoryLinks = async () => {
   directoryLinkCatalog = Array.isArray(links) ? links.map(formatDirectoryLink) : [];
   applyDirectoryLinkTotals();
   discoveryMediaList = [...WATCH_CATALOG, ...directoryLinkCatalog];
-  if (!normalizeSearchText(query)) {
+  if (!hasActiveSearchTerm()) {
     currentMediaList = [...discoveryMediaList];
     renderResources();
   }
@@ -1200,7 +1227,7 @@ const fetchTrendingMedia = async () => {
     discoveryMediaList = [...WATCH_CATALOG, ...directoryLinkCatalog];
   }
 
-  if (!normalizeSearchText(query)) {
+  if (!hasActiveSearchTerm()) {
     currentMediaList = [...discoveryMediaList];
     renderResources();
   }
@@ -1331,7 +1358,31 @@ const applySearchBatch = (term, sequence, scope, localResults, batches, totals, 
 };
 
 const searchGlobalMedia = async (term, sequence, scope, page = 1, append = false) => {
-  const normalizedTerm = normalizeSearchText(term);
+  const normalizedTerm = normalizeScopedSearchTerm(term, scope);
+  if (scope.category === 'Watch' && scope.subcategory === 'Movies' && !TMDB_API_KEY) {
+    if (!term.trim() || !isCurrentSearchRequest(term, sequence, scope)) return;
+    const response = await window.harbor?.searchMovieDiscovery?.(term).catch(() => null);
+    if (!isCurrentSearchRequest(term, sequence, scope)) return;
+    const local = localSearchResults(term, scope);
+    const remote = (Array.isArray(response?.results) ? response.results.slice(0, 50) : [])
+      .filter(row => row.providerListed === true && /^[1-9]\d*$/.test(String(row.tmdb_id)) && typeof row.title === 'string')
+      .map(row => ({ ...formatVidSrcMovie(row), providerListings: [{ providerId: 'vidapi', mediaType: 'movie', tmdbId: String(row.tmdb_id) }],
+        movieDiscoveryMetadata: true,
+        overview: 'Original title from TMDB, listed in the provider movie library. Year, artwork, quality, and playback availability are unknown.' }));
+    const combined = [...local];
+    const movieKey = item => item.tmdbId ? 'movie:' + item.tmdbId : searchResultKey(item);
+    const keys = new Set(local.map(movieKey));
+    remote.forEach(item => { if (!keys.has(movieKey(item))) { keys.add(movieKey(item)); combined.push(item); } });
+    currentMediaList = combined;
+    searchState = { term: normalizedTerm, loading: false, total: combined.length, page: 1, canLoadMore: false,
+      partial: !response || response.status === 'unavailable',
+      movieDiscoveryNote: response?.status === 'stale'
+        ? ' Using saved movie titles from ' + response.sourceDate + '; refresh is temporarily unavailable.'
+        : response?.status === 'ready' ? ' Search shows up to 50 original-title matches and supports TMDB IDs; English aliases may be missing. Playback is unverified.'
+          : ' Movie title search is unavailable. Showing matching loaded titles and My List.' };
+    renderResources();
+    return;
+  }
   if (normalizedTerm.length < 2 || !isCurrentSearchRequest(term, sequence, scope)) return;
   if (scope.category === 'Watch' && ['Movies', 'TV Shows', 'Anime'].includes(scope.subcategory) && !TMDB_API_KEY) {
     currentMediaList = localSearchResults(term, scope);
@@ -1488,8 +1539,8 @@ const beginSearch = (term) => {
   searchController?.abort();
   searchController = null;
   const sequence = ++searchSequence;
-  const normalizedTerm = normalizeSearchText(term);
   const scope = getSearchScope();
+  const normalizedTerm = normalizeScopedSearchTerm(term, scope);
   const cacheKey = getSearchCacheKey(term, scope);
 
   if (isLiveDirectory()) {
@@ -1517,7 +1568,15 @@ const beginSearch = (term) => {
 
   // Provider-only catalog search changes as more pages are loaded. Recompute
   // local results each time rather than reuse a remote-search cache entry.
-  if (scope.category === 'Watch' && ['Movies', 'TV Shows'].includes(scope.subcategory) && !TMDB_API_KEY) {
+  if (scope.category === 'Watch' && scope.subcategory === 'Movies' && !TMDB_API_KEY) {
+    currentMediaList = localSearchResults(term, scope);
+    searchState = { term: normalizedTerm, loading: true, total: null, page: 1, canLoadMore: false, partial: false,
+      movieDiscoveryNote: ' Searching original movie titles and TMDB IDs…' };
+    renderResources();
+    searchTimeout = setTimeout(() => void searchGlobalMedia(term, sequence, scope), SEARCH_DEBOUNCE_MS);
+    return;
+  }
+  if (scope.category === 'Watch' && scope.subcategory === 'TV Shows' && !TMDB_API_KEY) {
     currentMediaList = localSearchResults(term, scope);
     searchState = { term: normalizedTerm, loading: false, total: currentMediaList.length, page: 1, canLoadMore: false, partial: false };
     renderResources();
@@ -1547,7 +1606,7 @@ const beginSearch = (term) => {
 };
 
 const loadMoreSearchResults = () => {
-  if (!normalizeSearchText(query) || searchState.loading || !searchState.canLoadMore) return;
+  if (!hasActiveSearchTerm() || searchState.loading || !searchState.canLoadMore) return;
   searchController?.abort();
   searchController = null;
   const sequence = ++searchSequence;
@@ -1729,7 +1788,7 @@ const renderCategories = () => {
         ? watchBrowseApi.defaultFilterId(category)
         : '';
       resetWatchBrowseState();
-      if (normalizeSearchText(query)) beginSearch(query);
+      if (hasActiveSearchTerm()) beginSearch(query);
       else {
         renderCategories();
         renderResources();
@@ -2218,7 +2277,8 @@ const openDetailDialog = async (item) => {
   detailTitle.textContent = item.name;
   detailSubtitle.textContent = isLive
     ? [item.year || 'Live', item.countryFlag, item.countryName, ...(item.languageNames || []), item.streamCandidates?.[0]?.quality].filter(Boolean).join(' · ')
-    : item.year + ' · ★ ' + item.rating + ' · ' + (item.sections || []).join(', ');
+    : item.movieDiscoveryMetadata ? 'Movie · Year and rating unknown · Playback unverified'
+      : item.year + ' · ★ ' + item.rating + ' · ' + (item.sections || []).join(', ');
   detailOverview.textContent = item.overview;
   syncSaveButton(detailSaveBtn, item);
   detailPlayBtn.hidden = isSeries;
@@ -2382,7 +2442,8 @@ const buildCard = (item) => {
         ? (item.domain || 'Website') + ' · ' + (item.sections || []).slice(0, 2).join(' · ')
         : (item.type === 'live'
           ? 'Live · ' + (item.sections || []).slice(0, 2).join(' · ')
-          : item.year + ' · ★ ' + item.rating + ' · ' + (item.sections || []).slice(0, 2).join(' · '))
+          : item.movieDiscoveryMetadata ? 'Movie · Year unknown · Playback unverified'
+            : item.year + ' · ★ ' + item.rating + ' · ' + (item.sections || []).slice(0, 2).join(' · '))
     )
   );
   openButton.append(art, copy);
@@ -2679,7 +2740,7 @@ const renderResources = () => {
       : 'Searching ' + searchLoadingTarget + '…')
     : (formattedSearchTotal && searchState.total > visible.length
       ? 'Showing the best ' + visible.length + ' from ' + formattedSearchTotal + ' matches ' + searchLocation + '.'
-      : visible.length + ' ' + (visible.length === 1 ? 'match' : 'matches') + ' ' + searchLocation + '.')) + partialSearchNote;
+      : visible.length + ' ' + (visible.length === 1 ? 'match' : 'matches') + ' ' + searchLocation + '.')) + partialSearchNote + (searchState.movieDiscoveryNote || '');
 
   if (query.trim()) {
     const resultsSection = createElement('section', 'content-rail');
@@ -2784,8 +2845,9 @@ const renderResources = () => {
 
   resourceList.replaceChildren(...rails);
 
-  searchInput.placeholder = activeCategory === 'Watch' && !TMDB_API_KEY && ['Movies', 'TV Shows'].includes(activeSubcategory)
-    ? 'Search loaded ' + (activeSubcategory === 'Movies' ? 'movies' : 'TV shows') : 'Search ' + searchScopeName;
+  searchInput.placeholder = activeCategory === 'Watch' && !TMDB_API_KEY && activeSubcategory === 'Movies'
+    ? 'Search original movie title or TMDB ID'
+    : activeCategory === 'Watch' && !TMDB_API_KEY && activeSubcategory === 'TV Shows' ? 'Search loaded TV shows' : 'Search ' + searchScopeName;
   searchInput.setAttribute('aria-label', 'Search ' + searchScopeName);
   heroKicker.textContent = query.trim() ? 'Search ' + searchScopeName : config.kicker;
   directoryTitle.textContent = query.trim()
