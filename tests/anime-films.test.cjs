@@ -57,6 +57,7 @@ for (const item of [desktopFilm, regularSeries, desktopSeries]) {
     isCurrentSearchRequest: () => true, localSearchResults: () => [desktopSeries], renderResources: () => {},
     currentMediaList: [], searchState: {}, fetchSearchJson: () => { throw new Error('No-key Anime search must remain local'); }
   });
+  vm.runInContext(slice('app/renderer.js', 'const normalizeMovieSearchText =', 'const localMovieSearchResults ='), noKey);
   vm.runInContext(slice('app/renderer.js', 'const searchGlobalMedia =', 'const beginSearch ='), noKey);
   await vm.runInContext('searchGlobalMedia("Harbor", 1, {category:"Watch",subcategory:"Anime"})', noKey);
   assert.equal(noKey.currentMediaList.length, 1); assert.equal(noKey.searchState.partial, false);

@@ -1,0 +1,13 @@
+# Desktop movie title search without an API key
+
+Watch → Movies searches original titles and TMDB IDs beyond loaded provider pages. Both `238` and `tmdb:238` select a movie by ID. Matching loaded titles and My List retain existing English aliases. Movie query identity, startup refresh guards, and category restarts recognize original-language terms, so late catalog updates do not overwrite active searches. Other categories and configured-key search retain existing behavior.
+
+The worker intersects `https://vidapi.ru/ids/movie_list_tmdb.txt` with the TMDB daily export at `https://files.tmdb.org/p/exports/movie_ids_MM_DD_YYYY.json.gz`. Adult/video records and unknown flags are excluded. These sources prove a metadata listing, not playback, release status, genre, year, rating, artwork, or quality. English translations are absent from the export. The UI explains those limits and supplies no invented movie poster or rating.
+
+Bulk downloads, decompression, cache IO, validation, indexing, search, and serialization stay in a Node worker. At most 50 movie DTOs return per query. IDs retain `vidsrc-movie-ID`. No search query, favorite, or profile data goes upstream. The worker starts on the first useful movie query; concurrent queries share one build.
+
+A validated snapshot is fresh for 24 hours. Failed refresh can use a labeled snapshot for at most seven days, with a five-minute retry cooldown. Corrupt/oversized/expired caches fall back to matching loaded titles and My List, including original-language names. Validated replacements are atomic writes inside the dedicated `movie-discovery-v1` cache under user data. Cache refresh never writes library or settings files. Saving a discovery movie retains only a strict movie-only boolean presentation marker so unknown-metadata labels survive reload; it adds no playback or availability claim.
+
+Limits: 200 query characters, 50 returned movies, 16 pending requests, 150,000 provider IDs, two million export rows, 60 MB compressed download, 350 MB expanded export, 64 KiB per line, 40 MB cache, 120 seconds per download, and 270 seconds per main-process request. Redirects are rejected. Only the trusted main document may invoke search IPC. Quitting terminates the worker and network activity.
+
+The build unpacks only `electron/movie-discovery-worker.cjs`, which main loads physically from `app.asar.unpacked`. Source checks: `npm run test:consumer`. Focused production check: `node tests/run-desktop-smoke.cjs movie-discovery-smoke.cjs`. Set `HARBOR_QA_EXECUTABLE` to the packaged executable to verify the actual packaged worker, trusted IPC, original-title/ID results, clear/scope races, unknown metadata labels, and saved-state preservation in an isolated profile.

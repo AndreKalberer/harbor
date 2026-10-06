@@ -8,6 +8,9 @@ const userStateApi = require('../shared/user-state.js');
 const artworkCacheApi = require('../shared/artwork-cache.js');
 const releaseChannelApi = require('../shared/release-channel.js');
 const { autoUpdater } = require('electron-updater');
+const { createMovieDiscovery } = require('./movie-discovery.cjs');
+let movieDiscovery;
+app.on('before-quit', () => movieDiscovery?.close());
 
 if (process.platform === 'win32') app.disableHardwareAcceleration();
 
@@ -537,6 +540,20 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('harbor:get-directory-links', () => readDirectoryLinks());
   ipcMain.handle('harbor:get-vidsrc-movies', fetchVidSrcMovies);
+  ipcMain.handle('harbor:search-movie-discovery', async (event, query) => {
+    const expected = require('node:url').pathToFileURL(path.join(__dirname, '..', 'app', 'index.html')).href;
+    if (event.senderFrame !== event.sender.mainFrame || event.senderFrame?.url !== expected
+        || typeof query !== 'string' || query.length > 200 || !query.trim()) {
+      return { status: 'unavailable', sourceDate: null, results: [] };
+    }
+    if (!movieDiscovery) {
+      const workerEntry = app.isPackaged
+        ? path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'movie-discovery-worker.cjs')
+        : path.join(__dirname, 'movie-discovery-worker.cjs');
+      movieDiscovery = createMovieDiscovery(path.join(app.getPath('userData'), 'movie-discovery-v1'), workerEntry);
+    }
+    return movieDiscovery.query(query);
+  });
   ipcMain.handle('harbor:get-vidsrc-shows', fetchVidSrcShows);
   ipcMain.handle('harbor:open-directory-link', async (_event, candidate) => {
     if (typeof candidate !== 'string') return { status: 'invalid' };

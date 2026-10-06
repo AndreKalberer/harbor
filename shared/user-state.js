@@ -98,6 +98,8 @@
       sports: stringList(value.sports, 20, 100),
       streamCandidates: streamList(value.streamCandidates)
     };
+    // Presentation only: retain the unknown-metadata label for saved discovery movies.
+    if (item.category === 'Watch' && item.type === 'movie' && value.movieDiscoveryMetadata === true) item.movieDiscoveryMetadata = true;
     if (Number.isFinite(Number(value.lastOpenedAt))) item.lastOpenedAt = Number(value.lastOpenedAt);
     return item;
   }

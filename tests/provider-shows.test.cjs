@@ -69,6 +69,7 @@ const pageData = page => ({ page, total_pages: 3, total: 50, items: page === 1 ?
     formatTmdbItem: item => item, formatItunesItem: item => item, formatItunesPodcastItem: item => item,
     formatItunesAudiobookItem: item => item, formatOpenLibraryItem: item => item
   });
+  vm.runInContext(slice('app/renderer.js', 'const normalizeMovieSearchText =', 'const localMovieSearchResults ='), search);
   vm.runInContext(slice('app/renderer.js', 'const localSearchResults =', 'const fetchSearchJson ='), search);
   vm.runInContext(slice('app/renderer.js', 'const searchGlobalMedia =', 'const loadMoreSearchResults ='), search);
   vm.runInContext('beginSearch("Series 3")', search);
