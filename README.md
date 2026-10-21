@@ -2,6 +2,27 @@
 
 Harbor is a cinematic entertainment hub for Windows, macOS, Linux, and TVs. Home, Watch, Listen, Read, and Play share one scoped search, while My Harbor keeps favorites, progress, history, local media, and installed games on the device.
 
+![Harbor desktop browsing interface](docs/harbor-desktop.png)
+
+## Engineering overview
+
+Harbor combines an **Electron desktop shell**, shared **JavaScript modules**, and a remote-first **TV interface**. The renderer manages browsing and playback, while the main process owns native capabilities and exposes a limited preload bridge.
+
+- **Local state:** versioned library data, recovery of unreadable state, and validated JSON backup/restore.
+- **Shared behavior:** search ranking, media metadata, playback-provider selection, artwork caching, and release-channel logic are separated into reusable modules.
+- **Desktop isolation:** context isolation, sandboxed rendering, restricted native actions, and embedded-player popup/download blocking.
+- **Delivery:** automated checks and desktop/TV smoke-test tools accompany platform packaging and release-signing configuration.
+
+For a quick demonstration, run the app, browse the shared category navigation, search a title, and open **My Harbor** to inspect local favorites and progress. Playback depends on third-party services; an unavailable source should be presented as unavailable.
+
+The screenshot above is captured from the actual desktop application with an isolated QA profile. To refresh it after UI changes:
+
+```sh
+node tests/capture-readme.cjs
+```
+
+This command checks that the desktop loads media cards and captures the browsing screen after first-run onboarding. It is a presentation capture, not a substitute for the interactive smoke suites below.
+
 Watch includes movies, television, anime, sports, and live TV. Listen includes music, soundtracks, radio, podcasts, and audiobooks. Read includes books, comics, manga, and light novels. Play browses games and can reopen installed titles without exposing their paths to the page.
 
 Sports and Live TV use IPTV-org's public playlists inside Harbor's native HLS/video player. Category and sport chips can be combined with country, language, and scoped search filters. Harbor rejects non-HTTPS, adult, blocked, header-dependent, duplicate, and unsupported stream formats; groups alternate feeds by channel; and temporarily quarantines feeds after repeated playback failures. Favorites remain on the device. When IPTV-org publishes XMLTV data for a selected channel, its guide shows only **Live Now** and **Coming Up**, with future listings grouped into **Later today** and **Later this week** across a seven-day window. Most channels currently show an honest schedule-unavailable state while remaining playable.
